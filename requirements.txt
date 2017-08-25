@@ -1,0 +1,4 @@
+qgiscommons
+owslib
+
+# test requirements
