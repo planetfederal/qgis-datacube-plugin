@@ -1,4 +1,4 @@
 qgiscommons
-owslib
+python-dateutil
 
 # test requirements

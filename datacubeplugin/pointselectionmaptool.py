@@ -15,8 +15,7 @@ class PointSelectionMapTool(QgsMapTool):
         self.setCursor(Qt.CrossCursor)
 
     def canvasReleaseEvent(self, e):
-
-        pt = self.toMapCoordinates(e.pos())
-
         plotWidget.show()
+        pt = self.toMapCoordinates(e.pos())
+        plotWidget.setPoint(pt)
 

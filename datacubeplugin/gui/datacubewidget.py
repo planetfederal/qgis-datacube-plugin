@@ -1,6 +1,5 @@
-
 import os
-import owslib.wcs as wcs
+
 from qgis.core import *
 
 from qgis.utils import iface
@@ -11,18 +10,16 @@ from qgis.PyQt.QtCore import Qt
 from qgiscommons2.layers import layerFromSource, WrongLayerSourceException
 from qgiscommons2.gui import execute
 
-from collections import defaultdict
-
 from endpointselectiondialog import EndpointSelectionDialog
 
 from datacubeplugin.pointselectionmaptool import PointSelectionMapTool
+from datacubeplugin import layers
+from datacubeplugin.connectors import WCSConnector, FileConnector
+from datacubeplugin.gui.plotwidget import plotWidget
 
 pluginPath = os.path.dirname(os.path.dirname(__file__))
 WIDGET, BASE = uic.loadUiType(
     os.path.join(pluginPath, 'ui', 'datacubewidget.ui'))
-
-_layers = {}
-_addedLayers = defaultdict(list)
 
 
 class DataCubeWidget(BASE, WIDGET):
@@ -31,10 +28,12 @@ class DataCubeWidget(BASE, WIDGET):
         super(DataCubeWidget, self).__init__(parent)
         self.setupUi(self)
 
-        item = AddEndpointTreeItem(self.treeWidget.invisibleRootItem(),
-                                self.treeWidget)
+        AddEndpointTreeItem(self.treeWidget.invisibleRootItem(),
+                                self.treeWidget, self)
 
         self.treeWidget.itemClicked.connect(self.treeItemClicked)
+
+        self.comboLayersSet.currentIndexChanged.connect(self.comboLayersChanged)
 
         self.applyButton.clicked.connect(self.updateRGB)
         self.selectOnCanvasButton.clicked.connect(self.toggleMapTool)
@@ -48,27 +47,62 @@ class DataCubeWidget(BASE, WIDGET):
     def unsetTool(self, tool):
         if not isinstance(tool, PointSelectionMapTool):
             self.selectOnCanvasButton.setChecked(False)
-    
+
     def toggleMapTool(self):
         self.selectOnCanvasButton.setChecked(True)
         mapTool = PointSelectionMapTool(iface.mapCanvas())
         iface.mapCanvas().setMapTool(mapTool)
 
     def updateRGB(self):
-        url = self.comboLayersSet.currentText()
+        name, coverageName = self.comboLayersSet.currentText().split(" : ")
         r = self.comboR.currentIndex()
         g = self.comboG.currentIndex()
         b = self.comboB.currentIndex()
-        for source in _addedLayers[url]:
+        layers._rendering[name][coverageName] = (r, g, b)
+        for layer in layers._layers[name][coverageName]:
+            source = layer.source()
             try:
                 layer = layerFromSource(source)
                 setLayerRGB(layer, r, g, b)
             except WrongLayerSourceException:
                 pass
 
-def updateComboLayersSet(self):
-    self.comboLayersSet.setItems(_addedLayers.keys())
-    
+    def comboLayersChanged(self):
+        self.updateRGBFields()
+
+    def updateRGBFields(self, nameToUpdate = None, coverageNameToUpdate = None):
+        name, coverageName = self.comboLayersSet.currentText().split(" : ")
+        if nameToUpdate is not None and (name != nameToUpdate or coverageName != coverageNameToUpdate):
+            return
+        try:
+            bandCount = layers._bandCount[name][coverageName]
+            r, g, b = layers._rendering[name][coverageName]
+        except KeyError:
+            #TODO improve this
+            bandCount = 3
+            r, g, b = (0, 1, 2)
+
+        items = [str(i + 1) for i in range(bandCount)]
+        self.comboR.clear()
+        self.comboR.addItems(items)
+        self.comboR.setCurrentIndex(r)
+        self.comboG.clear()
+        self.comboG.addItems(items)
+        self.comboG.setCurrentIndex(g)
+        self.comboB.clear()
+        self.comboB.addItems(items)
+        self.comboB.setCurrentIndex(b)
+
+
+    def updateComboLayersSet(self):
+        allItems = []
+        for name in layers._rendering.keys():
+            for coverageName in layers._rendering[name].keys():
+                allItems.append(name + " : " + coverageName)
+
+        self.comboLayersSet.clear()
+        self.comboLayersSet.addItems(allItems)
+
 def setLayerRGB(layer, r, g, b):
     renderer = QgsMultiBandColorRenderer()
     renderer.setRedBand(r)
@@ -76,7 +110,7 @@ def setLayerRGB(layer, r, g, b):
     renderer.setBlueBand(b)
     layer.setRenderer(renderer)
     layer.triggerRepaint()
-    qgis.utils.iface.legendInterface().refreshLayerSymbology(rlayer)
+    iface.legendInterface().refreshLayerSymbology(layer)
 
 class TreeItemWithLink(QTreeWidgetItem):
 
@@ -98,65 +132,96 @@ class TreeItemWithLink(QTreeWidgetItem):
         w = QWidget()
         w.setLayout(layout)
         self.tree.setItemWidget(self, 0, w)
-        
+
 class AddEndpointTreeItem(TreeItemWithLink):
 
-    def __init__(self, parent, tree):
+    def __init__(self, parent, tree, widget):
         TreeItemWithLink.__init__(self, parent, tree, "", "Add new data source")
-   
+        self.widget = widget
+
     def linkClicked(self):
         dialog = EndpointSelectionDialog()
         dialog.exec_()
         if dialog.url is not None:
             self.addEndpoint(dialog.url)
 
-    def addEndpoint(self, url):
-        execute(self.addEndpoint(url))
+    def addEndpoint(self, endpoint):
+        execute(lambda: self._addEndpoint(endpoint))
 
-    def _addEndpoint(self, url):
-        endpointLayers = []
+    def _addEndpoint(self, endpoint):
+        endpointLayers = {}
         iface.mainWindow().statusBar().showMessage("Retrieving coverages info from endpoint...")
-        w = wcs.WebCoverageService(url, version='1.0.0')
-        coverages = w.contents.keys()[:1]
-        for i, coverageName in enumerate(coverages):
+        if os.path.exists(endpoint):
+            connector = FileConnector(endpoint)
+        else:
+            connector = WCSConnector(endpoint)
+        coverages = connector.coverages()
+        for coverageName in coverages:
             item = QTreeWidgetItem()
             item.setText(0, coverageName)
             self.tree.addTopLevelItem(item)
-            coverage = w[coverageName]
-            timepositions = coverage.timepositions[:10]
-            for j, time in enumerate(timepositions):                
-                uri = QgsDataSourceURI()
-                uri.setParam("url", url)
-                uri.setParam("identifier", coverageName)
-                uri.setParam("time", time)
-                endpointLayers.append(uri)
-                subitem = LayerTreeItem(uri)
+            plotWidget.comboLayer.addItem(connector.name() + " : " + coverageName)
+            coverage = connector.coverage(coverageName)
+            timepositions = coverage.timePositions()[:10]
+            timeLayers = []
+            for time in timepositions:
+                layer = coverage.layerForTimePosition(time)
+                timeLayers.append(layer)
+                subitem = LayerTreeItem(layer, self.widget)
                 item.addChild(subitem)
-        _layers[url] = endpointLayers
+            layers._rendering[connector.name()][coverageName] = (0,1,2)
+            endpointLayers[coverageName] = timeLayers
+        layers._layers[connector.name()] = endpointLayers
+        self.widget.updateComboLayersSet()
+        iface.mainWindow().statusBar().showMessage("")
 
 
 class LayerTreeItem(QTreeWidgetItem):
 
-    def __init__(self, layer):
+    def __init__(self, layer, widget):
         QTreeWidgetItem.__init__(self)
         self.layer = layer
+        self.widget = widget
         self.setCheckState(0, Qt.Unchecked);
-        self.setText(0, layer.param("time"))
+        self.setText(0, layer.time())
 
     def addOrRemoveLayer(self):
-        source = str(self.layer.encodedUri())
+        source = self.layer.source()
         if self.checkState(0) == Qt.Checked:
             try:
                 layer = layerFromSource(source)
             except WrongLayerSourceException:
-                layer = QgsRasterLayer(source, self.layer.param("identifier"), "wcs")
-                QgsMapLayerRegistry.instance().addMapLayer(layer)
-                _addedLayers[self.layer.param("url")].append(source)
+                layer = self.layer.layer()
+                if layer.isValid():
+                    coverageName = self.layer.coverageName()
+                    root = QgsProject.instance().layerTreeRoot()
+                    group = None
+                    for child in root.children():
+                        if isinstance(child, QgsLayerTreeGroup) and child.name() == coverageName:
+                            group = child
+                    if group is None:
+                        group = root.addGroup(coverageName)
+                    QgsMapLayerRegistry.instance().addMapLayer(layer, False)
+                    group.addLayer(layer)
+                    name = self.layer.datasetName()
+                    try:
+                        count = layers._bandCount[name][coverageName]
+                        r, g, b = layers._rendering[name][coverageName]
+                        setLayerRGB(layer, r, g, b)
+                    except KeyError, e:
+                        print e
+                        print layers._bandCount
+                        print layers._rendering
+                        layers._bandCount[name][coverageName] = layer.bandCount()
+                        print layer.bandCount()
+                        self.widget.updateRGBFields(name, coverageName)
+                else:
+                    iface.mainWindow().statusBar().showMessage("Invalid layer")
         else:
             try:
                 layer = layerFromSource(source)
                 QgsMapLayerRegistry.instance().removeMapLayers([layer.id()])
             except WrongLayerSourceException:
                 pass
-        
+
 
