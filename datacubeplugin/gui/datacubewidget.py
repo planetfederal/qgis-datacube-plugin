@@ -41,11 +41,9 @@ class DataCubeWidget(BASE, WIDGET):
         self.selectRegionButton.clicked.connect(self.toggleRegionMapTool)
 
         self.comboLayerToPlot.currentIndexChanged.connect(self.layerToPlotHasChanged)
-        self.comboParameterToPlotX.currentIndexChanged.connect(self.parameterToPlotXHasChanged)
-        self.comboParameterToPlotY.currentIndexChanged.connect(self.parameterToPlotYHasChanged)
+        self.comboParameterToPlot.currentIndexChanged.connect(self.parameterToPlotHasChanged)
 
-        self.comboParameterToPlotX.addItems([str(p) for p in plotparams.parametersWithTime])
-        self.comboParameterToPlotY.addItems([str(p) for p in plotparams.parameters])
+        self.comboParameterToPlot.addItems([str(p) for p in plotparams.parameters])
 
         iface.mapCanvas().mapToolSet.connect(self.unsetTool)
 
@@ -119,13 +117,9 @@ class DataCubeWidget(BASE, WIDGET):
         self.comboLayersSet.clear()
         self.comboLayersSet.addItems(allItems)
 
-    def parameterToPlotXHasChanged(self):
-        param = plotparams.parametersWithTime[self.comboParameterToPlotX.currentIndex()]
-        plotWidget.setParameterX(param)
-
-    def parameterToPlotYHasChanged(self):
-        param = plotparams.parameters[self.comboParameterToPlotY.currentIndex()]
-        plotWidget.setParameterY(param)
+    def parameterToPlotHasChanged(self):
+        param = plotparams.parameters[self.comboParameterToPlot.currentIndex()]
+        plotWidget.setParameter(param)
 
     def layerToPlotHasChanged(self):
         txt = self.comboLayerToPlot.currentText()

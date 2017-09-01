@@ -26,8 +26,6 @@ class PlotWidget(BASE, WIDGET):
         self.pt = None
         self.dataset = None
         self.coverage = None
-        self.parameterX = None
-        self.parameterY = None
         self.figure = plt.figure()
         self.canvas = FigureCanvas(self.figure)
         layout = QHBoxLayout()
@@ -49,16 +47,12 @@ class PlotWidget(BASE, WIDGET):
         self.coverage = coverage
         self.plot()
 
-    def setParameterX(self, parameter):
-        self.parameterX = parameter
-        self.plot()
-
-    def setParameterY(self, parameter):
-        self.parameterY = parameter
+    def setParameter(self, parameter):
+        self.parameter = parameter
         self.plot()
 
     def plot(self):
-        if self.coverage is None or self.dataset is None:
+        if self.parameter is None or self.coverage is None or self.dataset is None:
             return
 
         plt.gcf().clear()
@@ -71,7 +65,6 @@ class PlotWidget(BASE, WIDGET):
         for layerdef in allCoverageLayers:
             source = layerdef.source()
             time = layerdef.time()
-            time = parser.parse(time)
             try:
                 layer = layerFromSource(source)
                 canvasLayers.append((layer, time))
@@ -101,35 +94,28 @@ class PlotWidget(BASE, WIDGET):
             x = []
             y = []
             for layer, time in canvasLayers:
-                vx = self.parameterX.value(layer, pts[0], time)
-                vy = self.parameterY.value(layer, pts[0], time)
-                if vx is not None and vy is not None:
-                    x.append(vx)
-                    y.append(vy)
-            if isinstance(self.parameterX, plotparams.TimeValue):
-                x = matplotlib.dates.date2num(x)
-                plt.plot_date(x,y)
-                plt.gcf().autofmt_xdate()
-            else:
-                plt.plot(x,y)
+                v = self.parameter.value(layer, pts[0])
+                if v is not None:
+                    time = parser.parse(time)
+                    x.append(time)
+                    y.append(v)
+            x = matplotlib.dates.date2num(x)
+            plt.plot_date(x,y)
         else:
             data = {}
             for layer, time in canvasLayers:
-                vy = self.parameterY.value(layer, pts[0], time)
-                if vy is not None:
-                    data[vy] = []
-                    for pt in pts:
-                        vx = self.parameter.value(layer, pt)
-                        if vx is not None:
-                            vx = self.parameterX.value(layer, pts[0], time)
-                        data[vy].append(vx)
-                y = data.values()
-            if isinstance(self.parameterX, plotparams.TimeValue):
+                vs = []
+                time = parser.parse(time)
+                for pt in pts:
+                    v = self.parameter.value(layer, pt)
+                    if v is not None:
+                        vs.append(v)
+                data[time] = vs
                 x = matplotlib.dates.date2num(data.keys())
-                plt.gca().set_xticklabels([str(d).split(" ")[0] for d in data.keys()], rotation=45)
-            plt.boxplot(y, positions = x)
-
-
+                y = data.values()
+                print y
+                plt.boxplot(y)
+        plt.gcf().autofmt_xdate()
 
         self.canvas.draw()
 
