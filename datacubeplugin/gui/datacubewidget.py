@@ -12,10 +12,11 @@ from qgiscommons2.gui import execute
 
 from endpointselectiondialog import EndpointSelectionDialog
 
-from datacubeplugin.pointselectionmaptool import PointSelectionMapTool
+from datacubeplugin.selectionmaptools import PointSelectionMapTool, RegionSelectionMapTool
 from datacubeplugin import layers
 from datacubeplugin.connectors import WCSConnector, FileConnector
 from datacubeplugin.gui.plotwidget import plotWidget
+from datacubeplugin import plotparams
 
 pluginPath = os.path.dirname(os.path.dirname(__file__))
 WIDGET, BASE = uic.loadUiType(
@@ -36,7 +37,15 @@ class DataCubeWidget(BASE, WIDGET):
         self.comboLayersSet.currentIndexChanged.connect(self.comboLayersChanged)
 
         self.applyButton.clicked.connect(self.updateRGB)
-        self.selectOnCanvasButton.clicked.connect(self.toggleMapTool)
+        self.selectPointButton.clicked.connect(self.togglePointMapTool)
+        self.selectRegionButton.clicked.connect(self.toggleRegionMapTool)
+
+        self.comboLayerToPlot.currentIndexChanged.connect(self.layerToPlotHasChanged)
+        self.comboParameterToPlotX.currentIndexChanged.connect(self.parameterToPlotXHasChanged)
+        self.comboParameterToPlotY.currentIndexChanged.connect(self.parameterToPlotYHasChanged)
+
+        self.comboParameterToPlotX.addItems([str(p) for p in plotparams.parametersWithTime])
+        self.comboParameterToPlotY.addItems([str(p) for p in plotparams.parameters])
 
         iface.mapCanvas().mapToolSet.connect(self.unsetTool)
 
@@ -46,11 +55,18 @@ class DataCubeWidget(BASE, WIDGET):
 
     def unsetTool(self, tool):
         if not isinstance(tool, PointSelectionMapTool):
-            self.selectOnCanvasButton.setChecked(False)
+            self.selectPointButton.setChecked(False)
+        if not isinstance(tool, RegionSelectionMapTool):
+            self.selectRegionButton.setChecked(False)
 
-    def toggleMapTool(self):
-        self.selectOnCanvasButton.setChecked(True)
+    def togglePointMapTool(self):
+        self.selectPointButton.setChecked(True)
         mapTool = PointSelectionMapTool(iface.mapCanvas())
+        iface.mapCanvas().setMapTool(mapTool)
+
+    def toggleRegionMapTool(self):
+        self.selectRegionButton.setChecked(True)
+        mapTool = RegionSelectionMapTool(iface.mapCanvas())
         iface.mapCanvas().setMapTool(mapTool)
 
     def updateRGB(self):
@@ -102,6 +118,20 @@ class DataCubeWidget(BASE, WIDGET):
 
         self.comboLayersSet.clear()
         self.comboLayersSet.addItems(allItems)
+
+    def parameterToPlotXHasChanged(self):
+        param = plotparams.parametersWithTime[self.comboParameterToPlotX.currentIndex()]
+        plotWidget.setParameterX(param)
+
+    def parameterToPlotYHasChanged(self):
+        param = plotparams.parameters[self.comboParameterToPlotY.currentIndex()]
+        plotWidget.setParameterY(param)
+
+    def layerToPlotHasChanged(self):
+        txt = self.comboLayerToPlot.currentText()
+        name, coverageName = txt.split(" : ")
+        plotWidget.setLayer(name, coverageName)
+
 
 def setLayerRGB(layer, r, g, b):
     renderer = QgsMultiBandColorRenderer()
@@ -156,11 +186,15 @@ class AddEndpointTreeItem(TreeItemWithLink):
         else:
             connector = WCSConnector(endpoint)
         coverages = connector.coverages()
+        if coverages:
+            endpointItem = QTreeWidgetItem()
+            endpointItem.setText(0, connector.name())
+            self.tree.addTopLevelItem(endpointItem)
         for coverageName in coverages:
             item = QTreeWidgetItem()
             item.setText(0, coverageName)
-            self.tree.addTopLevelItem(item)
-            plotWidget.comboLayer.addItem(connector.name() + " : " + coverageName)
+            endpointItem.addChild(item)
+            self.widget.comboLayerToPlot.addItem(connector.name() + " : " + coverageName)
             coverage = connector.coverage(coverageName)
             timepositions = coverage.timePositions()[:10]
             timeLayers = []

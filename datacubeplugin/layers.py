@@ -1,5 +1,6 @@
 from collections import defaultdict
 from qgis.core import  QgsDataSourceURI
+
 _layers = {}
 _rendering = defaultdict(defaultdict)
 _bandCount = defaultdict(defaultdict)
