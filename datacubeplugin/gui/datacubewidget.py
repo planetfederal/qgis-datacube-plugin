@@ -110,8 +110,8 @@ class DataCubeWidget(BASE, WIDGET):
 
     def updateComboLayersSet(self):
         allItems = []
-        for name in layers._rendering.keys():
-            for coverageName in layers._rendering[name].keys():
+        for name in layers._layers.keys():
+            for coverageName in layers._layers[name].keys():
                 allItems.append(name + " : " + coverageName)
 
         self.comboLayersSet.clear()
@@ -128,10 +128,8 @@ class DataCubeWidget(BASE, WIDGET):
 
 
 def setLayerRGB(layer, r, g, b):
-    renderer = QgsMultiBandColorRenderer()
-    renderer.setRedBand(r)
-    renderer.setGreenBand(g)
-    renderer.setBlueBand(b)
+    return
+    renderer = QgsMultiBandColorRenderer(layer.dataProvider, r, g, b)
     layer.setRenderer(renderer)
     layer.triggerRepaint()
     iface.legendInterface().refreshLayerSymbology(layer)
@@ -197,7 +195,6 @@ class AddEndpointTreeItem(TreeItemWithLink):
                 timeLayers.append(layer)
                 subitem = LayerTreeItem(layer, self.widget)
                 item.addChild(subitem)
-            layers._rendering[connector.name()][coverageName] = (0,1,2)
             endpointLayers[coverageName] = timeLayers
         layers._layers[connector.name()] = endpointLayers
         self.widget.updateComboLayersSet()
@@ -237,11 +234,11 @@ class LayerTreeItem(QTreeWidgetItem):
                         r, g, b = layers._rendering[name][coverageName]
                         setLayerRGB(layer, r, g, b)
                     except KeyError, e:
-                        print e
-                        print layers._bandCount
-                        print layers._rendering
                         layers._bandCount[name][coverageName] = layer.bandCount()
-                        print layer.bandCount()
+                        if layer.bandCount() > 2:
+                            layers._rendering[name][coverageName] = (0,1,2)
+                        else:
+                            layers._rendering[name][coverageName] = (0,0,0)
                         self.widget.updateRGBFields(name, coverageName)
                 else:
                     iface.mainWindow().statusBar().showMessage("Invalid layer")

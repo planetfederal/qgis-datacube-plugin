@@ -51,7 +51,7 @@ class WCSLayer():
         return str(uri.encodedUri())
 
     def name(self):
-        return "%s [%s]" % (self.coverageName, self.time)
+        return self.time
 
     def time(self):
         return self._time
@@ -120,13 +120,13 @@ class FileLayer():
         return os.path.join(self.folder, self._filename)
 
     def name(self):
-        return "%s [%s]" % (os.path.basename(self.folder), self.time())
+        return self.time()
 
     def time(self):
         return self._time
 
     def datasetName(self):
-        return self.folder
+        return os.path.dirname(self.folder)
 
     def coverageName(self):
         return os.path.basename(self.folder)

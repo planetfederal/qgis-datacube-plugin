@@ -10,7 +10,9 @@ import matplotlib
 from datacubeplugin import plotparams
 from datacubeplugin import layers
 from qgiscommons2.layers import layerFromSource, WrongLayerSourceException
+from qgiscommons2.gui import askForFiles
 from dateutil import parser
+import csv
 
 pluginPath = os.path.dirname(os.path.dirname(__file__))
 WIDGET, BASE = uic.loadUiType(
@@ -22,6 +24,7 @@ class PlotWidget(BASE, WIDGET):
     def __init__(self, parent=None):
         super(PlotWidget, self).__init__(parent)
         self.setupUi(self)
+        self.data = {}
         self.rectangle = None
         self.pt = None
         self.dataset = None
@@ -31,6 +34,19 @@ class PlotWidget(BASE, WIDGET):
         layout = QHBoxLayout()
         layout.addWidget(self.canvas)
         self.canvasWidget.setLayout(layout)
+        self.buttonSave.setIcon(QgsApplication.getThemeIcon('/mActionFileSave.svg'))
+        self.buttonSave.clicked.connect(self.savePlotData)
+        self.buttonSave.setEnabled(False)
+
+    def savePlotData(self):
+        filename = askForFiles(self, msg="Save plot data", isSave=True, allowMultiple=False, exts = "csv")
+        if filename:
+            with open(filename, 'wb') as csvfile:
+                writer = csv.writer(csvfile, quoting=csv.QUOTE_MINIMAL)
+                for time, values in self.data.iteritems():
+                    for v in values:
+                        pt = v[1]
+                        writer.writerow([time, pt.x(), pt.y(), v[0]])
 
     def setRectangle(self, rect):
         self.rectangle = rect
@@ -53,6 +69,7 @@ class PlotWidget(BASE, WIDGET):
 
     def plot(self):
         if self.parameter is None or self.coverage is None or self.dataset is None:
+            self.buttonSave.setEnabled(False)
             return
 
         plt.gcf().clear()
@@ -61,6 +78,7 @@ class PlotWidget(BASE, WIDGET):
         try:
             allCoverageLayers = layers._layers[self.dataset][self.coverage]
         except KeyError:
+            self.buttonSave.setEnabled(False)
             return
         for layerdef in allCoverageLayers:
             source = layerdef.source()
@@ -72,6 +90,7 @@ class PlotWidget(BASE, WIDGET):
                 pass
 
         if not canvasLayers:
+            self.buttonSave.setEnabled(False)
             return
 
         pts = []
@@ -88,35 +107,36 @@ class PlotWidget(BASE, WIDGET):
             pts = [self.pt]
 
         if not pts:
+            self.buttonSave.setEnabled(False)
             return
 
         if len(pts) == 1:
-            x = []
-            y = []
+            self.data = {}
             for layer, time in canvasLayers:
                 v = self.parameter.value(layer, pts[0])
                 if v is not None:
                     time = parser.parse(time)
-                    x.append(time)
-                    y.append(v)
-            x = matplotlib.dates.date2num(x)
+                    self.data[time] = [(v, pts[0])]
+
+            y = [v[0][0] for v in self.data.values()]
+            x = matplotlib.dates.date2num(self.data.keys())
             plt.plot_date(x,y)
         else:
-            data = {}
+            self.data = {}
             for layer, time in canvasLayers:
-                vs = []
                 time = parser.parse(time)
+                self.data[time] = []
                 for pt in pts:
-                    v = self.parameter.value(layer, pt)
-                    if v is not None:
-                        vs.append(v)
-                data[time] = vs
-                x = matplotlib.dates.date2num(data.keys())
-                y = data.values()
-                print y
-                plt.boxplot(y)
+                    vx = self.parameter.value(layer, pt)
+                    if vx is not None:
+                        self.data[time].append((vx, pt))
+                y = [[v[0] for v in lis] for lis in self.data.values()]
+                x = matplotlib.dates.date2num(self.data.keys())
+                plt.boxplot(y, positions = x)
+                plt.gca().set_xticklabels([str(d).split(" ")[0] for d in self.data.keys()], rotation=45)
         plt.gcf().autofmt_xdate()
 
+        self.buttonSave.setEnabled(True)
         self.canvas.draw()
 
 plotWidget = PlotWidget(iface.mainWindow())
