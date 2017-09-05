@@ -47,6 +47,42 @@ class DataCubeWidget(BASE, WIDGET):
 
         iface.mapCanvas().mapToolSet.connect(self.unsetTool)
 
+        self.pointSelectionTool = PointSelectionMapTool(iface.mapCanvas())
+        self.regionSelectionTool = RegionSelectionMapTool(iface.mapCanvas())
+        self.sliderStartDate.valueChanged.connect(self.plotDataFilterChanged)
+        self.sliderEndDate.valueChanged.connect(self.plotDataFilterChanged)
+        self.sliderMinY.valueChanged.connect(self.plotDataFilterChanged)
+        self.sliderMaxY.valueChanged.connect(self.plotDataFilterChanged)
+
+        plotWidget.plotDataChanged.connect(self.plotDataChanged)
+
+    def plotDataFilterChanged(self):
+        xmin = self.sliderStartDate.value()
+        xmax = self.sliderEndDate.value()
+        ymin = self.sliderMinY.value()
+        ymax = self.sliderMaxY.value()
+        plotWidget.plot([xmin, xmax, ymin, ymax])
+
+    def plotDataChanged(self, xmin, xmax, ymin, ymax):
+        widgets = [self.sliderMinY, self.sliderMaxY, self.sliderStartDate, self.sliderEndDate]
+        for w in widgets:
+            w.blockSignals(True)
+        self.sliderMinY.setMinimum(ymin)
+        self.sliderMaxY.setMinimum(ymin)
+        self.sliderMinY.setMaximum(ymax)
+        self.sliderMaxY.setMaximum(ymax)
+        self.sliderMaxY.setValue(ymax)
+        self.sliderMinY.setValue(ymin)
+
+        self.sliderStartDate.setMinimum(xmin)
+        self.sliderEndDate.setMinimum(xmin)
+        self.sliderStartDate.setMaximum(xmax)
+        self.sliderEndDate.setMaximum(xmax)
+        self.sliderStartDate.setValue(xmin)
+        self.sliderEndDate.setValue(xmax)
+        for w in widgets:
+            w.blockSignals(False)
+
     def treeItemClicked(self, item, col):
         if isinstance(item, LayerTreeItem):
             item.addOrRemoveLayer()
@@ -59,13 +95,11 @@ class DataCubeWidget(BASE, WIDGET):
 
     def togglePointMapTool(self):
         self.selectPointButton.setChecked(True)
-        mapTool = PointSelectionMapTool(iface.mapCanvas())
-        iface.mapCanvas().setMapTool(mapTool)
+        iface.mapCanvas().setMapTool(self.pointSelectionTool)
 
     def toggleRegionMapTool(self):
         self.selectRegionButton.setChecked(True)
-        mapTool = RegionSelectionMapTool(iface.mapCanvas())
-        iface.mapCanvas().setMapTool(mapTool)
+        iface.mapCanvas().setMapTool(self.regionSelectionTool)
 
     def updateRGB(self):
         name, coverageName = self.comboLayersSet.currentText().split(" : ")

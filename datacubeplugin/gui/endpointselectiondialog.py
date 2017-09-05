@@ -1,5 +1,6 @@
 import os
 from qgis.PyQt import uic
+from qgiscommons2.settings import pluginSetting, setPluginSetting
 
 pluginPath = os.path.dirname(os.path.dirname(__file__))
 WIDGET, BASE = uic.loadUiType(
@@ -7,6 +8,8 @@ WIDGET, BASE = uic.loadUiType(
 
 
 class EndpointSelectionDialog(BASE, WIDGET):
+
+    ENDPOINTS = "Endpoints"
 
     def __init__(self):
         self.url = None
@@ -16,8 +19,18 @@ class EndpointSelectionDialog(BASE, WIDGET):
         self.buttonBox.accepted.connect(self.okPressed)
         self.buttonBox.rejected.connect(self.cancelPressed)
 
+        endpoints = pluginSetting(self.ENDPOINTS)
+        if endpoints:
+            items = endpoints.split(";")
+            self.comboBox.addItems(items)
+
     def okPressed(self):
         self.url = self.comboBox.currentText()
+        endpoints = pluginSetting(self.ENDPOINTS)
+        if endpoints:
+            setPluginSetting(self.ENDPOINTS, endpoints + ";" + self.url)
+        else:
+            setPluginSetting(self.ENDPOINTS, self.url)
         self.close()
 
     def cancelPressed(self):

@@ -3,6 +3,7 @@ from qgis.core import *
 from qgis.utils import iface
 from qgis.PyQt import uic
 from qgis.PyQt.QtWidgets import QHBoxLayout
+from qgis.PyQt.QtCore import pyqtSignal
 
 from matplotlib.backends.backend_qt4agg import FigureCanvasQTAgg as FigureCanvas
 import matplotlib.pyplot as plt
@@ -20,6 +21,8 @@ WIDGET, BASE = uic.loadUiType(
 
 
 class PlotWidget(BASE, WIDGET):
+
+    plotDataChanged = pyqtSignal(int, int, int ,int)
 
     def __init__(self, parent=None):
         super(PlotWidget, self).__init__(parent)
@@ -67,7 +70,7 @@ class PlotWidget(BASE, WIDGET):
         self.parameter = parameter
         self.plot()
 
-    def plot(self):
+    def plot(self, filter=None):
         if self.parameter is None or self.coverage is None or self.dataset is None:
             self.buttonSave.setEnabled(False)
             return
@@ -117,10 +120,9 @@ class PlotWidget(BASE, WIDGET):
                 if v is not None:
                     time = parser.parse(time)
                     self.data[time] = [(v, pts[0])]
-
             y = [v[0][0] for v in self.data.values()]
-            x = matplotlib.dates.date2num(self.data.keys())
-            plt.plot_date(x,y)
+            ymin = min(y)
+            ymax = max(y)
         else:
             self.data = {}
             for layer, time in canvasLayers:
@@ -130,10 +132,47 @@ class PlotWidget(BASE, WIDGET):
                     vx = self.parameter.value(layer, pt)
                     if vx is not None:
                         self.data[time].append((vx, pt))
-                y = [[v[0] for v in lis] for lis in self.data.values()]
-                x = matplotlib.dates.date2num(self.data.keys())
-                plt.boxplot(y, positions = x)
-                plt.gca().set_xticklabels([str(d).split(" ")[0] for d in self.data.keys()], rotation=45)
+            y = [[v[0] for v in lis] for lis in self.data.values()]
+            ymin = min([min(v) for v in y])
+            ymax = max([max(v) for v in y])
+
+        if filter is None:
+            xmin = min(self.data.keys()).year
+            xmax = max(self.data.keys()).year
+            print [xmin, xmax, ymin, ymax]
+            self.plotDataChanged.emit(xmin, xmax, ymin, ymax)
+        else:
+            datesToRemove = []
+            for d in self.data.keys():
+                if d.year < filter[0] or d.year > filter[1]:
+                    datesToRemove.append(d)
+            for d in datesToRemove:
+                del self.data[d]
+            for key, values in self.data.iteritems():
+                for v in values[::-1]:
+                    if v[0] < filter[2] or v[0] > filter[3]:
+                        try:
+                            print "removing " + str(v[0])
+                            self.data[key].remove(v)
+                        except:
+                            pass
+
+        datesToRemove = []
+        for key, values in self.data.iteritems():
+            if not values:
+                datesToRemove.append(key)
+        for d in datesToRemove:
+            del self.data[d]
+
+        x = matplotlib.dates.date2num(self.data.keys())
+        if len(pts) == 1:
+            y = [v[0][0] for v in self.data.values() if v]
+            plt.plot_date(x,y)
+        else:
+            y = [[v[0] for v in lis] for lis in self.data.values()]
+            plt.boxplot(y, positions = x)
+            plt.gca().set_xticklabels([str(d).split(" ")[0] for d in self.data.keys()], rotation=45)
+
         plt.gcf().autofmt_xdate()
 
         self.buttonSave.setEnabled(True)
