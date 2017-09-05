@@ -16,6 +16,7 @@ from datacubeplugin.selectionmaptools import PointSelectionMapTool, RegionSelect
 from datacubeplugin import layers
 from datacubeplugin.connectors import WCSConnector, FileConnector
 from datacubeplugin.gui.plotwidget import plotWidget
+from datacubeplugin.gui.mosaicwidget import mosaicWidget
 from datacubeplugin import plotparams
 
 pluginPath = os.path.dirname(os.path.dirname(__file__))
@@ -221,6 +222,7 @@ class AddEndpointTreeItem(TreeItemWithLink):
             item.setText(0, coverageName)
             endpointItem.addChild(item)
             self.widget.comboLayerToPlot.addItem(connector.name() + " : " + coverageName)
+            mosaicWidget.comboCoverage.addItem(connector.name() + " : " + coverageName)
             coverage = connector.coverage(coverageName)
             timepositions = coverage.timePositions()[:10]
             timeLayers = []

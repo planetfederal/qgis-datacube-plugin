@@ -1,17 +1,17 @@
-
 import os
-import webbrowser
 
 from qgis.PyQt.QtCore import Qt
 from qgis.PyQt.QtGui import QIcon
 from qgis.core import QgsApplication
 
 from qgiscommons2.settings import readSettings
+from qgiscommons2.files import removeTempFolder
 from qgiscommons2.gui.settings import addSettingsMenu, removeSettingsMenu
 from qgiscommons2.gui import addAboutMenu, removeAboutMenu, addHelpMenu, removeHelpMenu
 
 from datacubeplugin.gui.datacubewidget import DataCubeWidget
 from datacubeplugin.gui.plotwidget import plotWidget
+from datacubeplugin.gui.mosaicwidget import mosaicWidget
 
 class DataCubePlugin:
     def __init__(self, iface):
@@ -40,16 +40,25 @@ class DataCubePlugin:
         self.iface.addDockWidget(Qt.BottomDockWidgetArea, plotWidget)
         plotWidget.hide()
 
-        self.action = self.dataCubeWidget.toggleViewAction()
+        self.iface.addDockWidget(Qt.TopDockWidgetArea, mosaicWidget)
+        mosaicWidget.hide()
+
+        self.dataCubeAction = self.dataCubeWidget.toggleViewAction()
         icon = QIcon(os.path.dirname(__file__) + "/icons/desktop.svg")
-        self.action.setIcon(icon)
-        self.action.setText("Data Cube panel")
+        self.dataCubeAction.setIcon(icon)
+        self.dataCubeAction.setText("Data Cube panel")
         self.iface.addPluginToMenu("Data Cube Plugin", self.action)
+
+        self.mosaicAction = mosaicWidget.toggleViewAction()
+        icon = QIcon(os.path.dirname(__file__) + "/icons/desktop.svg")
+        self.mosaicAction.setIcon(icon)
+        self.mosaicAction.setText("Mosaic tool")
+        self.iface.addPluginToMenu("Data Cube Plugin", self.mosaicAction)
 
         addSettingsMenu("Data Cube Plugin")
         addHelpMenu("Data Cube Plugin")
         addAboutMenu("Data Cube Plugin")
-        
+
     def unload(self):
         try:
             from .tests import testerplugin
@@ -65,7 +74,10 @@ class DataCubePlugin:
         except:
             pass
 
-        self.iface.removePluginWebMenu("Data Cube Plugin", self.action)
+        self.iface.removePluginWebMenu("Data Cube Plugin", self.dataCubeAction)
+        self.iface.removePluginWebMenu("Data Cube Plugin", self.mosaicAction)
         removeSettingsMenu("Data Cube Plugin")
         removeAboutMenu("Data Cube Plugin")
         removeHelpMenu("Data Cube Plugin")
+
+        removeTempFolder()

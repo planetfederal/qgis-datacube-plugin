@@ -65,6 +65,15 @@ class WCSLayer():
     def layer(self):
         return QgsRasterLayer(self.source(), self.name(), "wcs")
 
+    _files = {}
+    def layerFile(self, extent=None):
+        if extent in self._files:
+            return self._files[extent]
+        else:
+            #TODO
+            pass
+
+
 class FileConnector():
 
     def __init__(self, folder):
@@ -133,3 +142,13 @@ class FileLayer():
 
     def layer(self):
         return QgsRasterLayer(self.source(), self.name(), "gdal")
+
+    _files = {}
+    def layerFile(self, extent=None):
+        if extent is None:
+            return self.source()
+        if extent in self._files:
+            return self._files[extent]
+        else:
+            #TODO
+            pass
