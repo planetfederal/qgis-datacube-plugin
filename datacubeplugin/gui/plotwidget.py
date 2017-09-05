@@ -139,7 +139,6 @@ class PlotWidget(BASE, WIDGET):
         if filter is None:
             xmin = min(self.data.keys()).year
             xmax = max(self.data.keys()).year
-            print [xmin, xmax, ymin, ymax]
             self.plotDataChanged.emit(xmin, xmax, ymin, ymax)
         else:
             datesToRemove = []
@@ -152,7 +151,6 @@ class PlotWidget(BASE, WIDGET):
                 for v in values[::-1]:
                     if v[0] < filter[2] or v[0] > filter[3]:
                         try:
-                            print "removing " + str(v[0])
                             self.data[key].remove(v)
                         except:
                             pass
