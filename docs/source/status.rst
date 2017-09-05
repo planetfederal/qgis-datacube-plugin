@@ -63,4 +63,9 @@ In the plot panel, the Save button allows the user to save the plot data as a CS
 Mosaic Tool
 ***********
 
-To be developed
+To be developed.
+
+Questions: 
+
+- Can we assume that all layers for a given coverage (all timepositions for a variable) will have the same extent and cellsize?
+
