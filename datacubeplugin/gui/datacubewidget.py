@@ -206,12 +206,12 @@ class AddEndpointTreeItem(TreeItemWithLink):
         execute(lambda: self._addEndpoint(endpoint))
 
     def _addEndpoint(self, endpoint):
-        endpointLayers = {}
         iface.mainWindow().statusBar().showMessage("Retrieving coverages info from endpoint...")
         if os.path.exists(endpoint):
             connector = FileConnector(endpoint)
         else:
             connector = WCSConnector(endpoint)
+        layers._layers[connector.name()] = {}
         coverages = connector.coverages()
         if coverages:
             endpointItem = QTreeWidgetItem()
@@ -221,8 +221,6 @@ class AddEndpointTreeItem(TreeItemWithLink):
             item = QTreeWidgetItem()
             item.setText(0, coverageName)
             endpointItem.addChild(item)
-            self.widget.comboLayerToPlot.addItem(connector.name() + " : " + coverageName)
-            mosaicWidget.comboCoverage.addItem(connector.name() + " : " + coverageName)
             coverage = connector.coverage(coverageName)
             timepositions = coverage.timePositions()[:10]
             timeLayers = []
@@ -231,8 +229,9 @@ class AddEndpointTreeItem(TreeItemWithLink):
                 timeLayers.append(layer)
                 subitem = LayerTreeItem(layer, self.widget)
                 item.addChild(subitem)
-            endpointLayers[coverageName] = timeLayers
-        layers._layers[connector.name()] = endpointLayers
+            layers._layers[connector.name()][coverageName] = timeLayers
+            self.widget.comboLayerToPlot.addItem(connector.name() + " : " + coverageName)
+            mosaicWidget.comboCoverage.addItem(connector.name() + " : " + coverageName)
         self.widget.updateComboLayersSet()
         iface.mainWindow().statusBar().showMessage("")
 
@@ -276,6 +275,7 @@ class LayerTreeItem(QTreeWidgetItem):
                         else:
                             layers._rendering[name][coverageName] = (0,0,0)
                         self.widget.updateRGBFields(name, coverageName)
+                    mosaicWidget.updateDates()
                 else:
                     iface.mainWindow().statusBar().showMessage("Invalid layer")
         else:

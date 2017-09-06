@@ -47,7 +47,7 @@ class DataCubePlugin:
         icon = QIcon(os.path.dirname(__file__) + "/icons/desktop.svg")
         self.dataCubeAction.setIcon(icon)
         self.dataCubeAction.setText("Data Cube panel")
-        self.iface.addPluginToMenu("Data Cube Plugin", self.action)
+        self.iface.addPluginToMenu("Data Cube Plugin", self.dataCubeAction)
 
         self.mosaicAction = mosaicWidget.toggleViewAction()
         icon = QIcon(os.path.dirname(__file__) + "/icons/desktop.svg")
