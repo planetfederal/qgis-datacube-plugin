@@ -4,8 +4,9 @@ from qgis.utils import iface
 from qgis.PyQt import uic
 from datacubeplugin import layers
 from qgiscommons2.layers import layerFromSource, WrongLayerSourceException
+from qgiscommons2.files import tempFilename
 from dateutil import parser
-import struct
+import numpy as np
 from osgeo import gdal
 from osgeo.gdalconst import GA_ReadOnly
 from datacubeplugin.gui.selectextentmaptool import SelectExtentMapTool
@@ -40,7 +41,7 @@ class MosaicWidget(BASE, WIDGET):
         iface.mapCanvas().mapToolSet.connect(self.unsetTool)
 
     def useCanvasExtent(self):
-        self.setExent(iface.mapCanvas().extent())
+        self.setExtent(iface.mapCanvas().extent())
 
     def useLayerExtent(self):
         layer = iface.activeLayer()
@@ -63,14 +64,14 @@ class MosaicWidget(BASE, WIDGET):
 
     def _loadedLayersForCoverage(self, name, coverageName):
         loadedLayers = []
-        for layer in layers._layers[name][coverageName]:
-            source = layer.source()
+        for layerdef in layers._layers[name][coverageName]:
+            source = layerdef.source()
             try:
                 layer = layerFromSource(source)
-                loadedLayers.append(layer)
+                loadedLayers.append(layerdef)
             except WrongLayerSourceException:
                 pass
-        loadedLayers.sort(key=lambda lay: lay[1])
+        loadedLayers.sort(key=lambda lay: lay.time())
         return loadedLayers
 
     def updateDates(self):
@@ -101,33 +102,47 @@ class MosaicWidget(BASE, WIDGET):
             if (time.year >= minYear and time.year <= maxYear):
                 layerFiles.append(layer.layerFile(extent))
         mosaicFunction = mosaicFunctions[self.comboMosaicType.currentIndex()]
+        if layerFiles:
+            bandCount = layers[0].bandCount()
+            width = layers[0].width()
+            height = layers[0].height()
+            newBands = []
+            for band in range(bandCount):
+                bandData = [self.getArray(f, band + 1) for f in layerFiles]
+                newBands.append(mosaicFunction(bandData))
+                bandData = None
+            newArray = np.array(newBands)
+            ds = gdal.Open(layerFiles[0], GA_ReadOnly)
+            datatype = ds.GetRasterBand(1).DataType
+            driver = gdal.GetDriverByName("GTiff")
+            dstFilename = tempFilename("tif")
+            dstDs= driver.Create(dstFilename, width, height, bandCount, datatype)
 
-def scanraster(filename, bandidx):
-    dataset = gdal.Open(filename, GA_ReadOnly)
-    band = dataset.GetRasterBand(bandidx)
-    nodata = band.GetNoDataValue()
-    bandtype = gdal.GetDataTypeName(band.DataType)
-    for y in xrange(band.YSize):
-        scanline = band.ReadRaster(0, y, band.XSize, 1, band.XSize, 1, band.DataType)
-        if bandtype == 'Byte':
-            values = struct.unpack('B' * band.XSize, scanline)
-        elif bandtype == 'Int16':
-            values = struct.unpack('h' * band.XSize, scanline)
-        elif bandtype == 'UInt16':
-            values = struct.unpack('H' * band.XSize, scanline)
-        elif bandtype == 'Int32':
-            values = struct.unpack('i' * band.XSize, scanline)
-        elif bandtype == 'UInt32':
-            values = struct.unpack('I' * band.XSize, scanline)
-        elif bandtype == 'Float32':
-            values = struct.unpack('f' * band.XSize, scanline)
-        elif bandtype == 'Float64':
-            values = struct.unpack('d' * band.XSize, scanline)
-        if values[0] == nodata:
-            value = None
-        else:
-            value = value[0]
-        yield value
+            ## These are only required if you wish to georeference (http://en.wikipedia.org/wiki/Georeference)
+            ## your output geotiff, you need to know what values to input, don't just use the ones below
+            #Coordinates of the lower left corner of the image
+            #in same units as spatial reference
+            #xllcorner=147.2
+            #yllcorner=-34.54
+
+            #Cellsize in same units as spatial reference
+            #cellsize=0.01
+
+            #dst_ds.SetGeoTransform( [ xllcorner, cellsize, 0, yllcorner, 0, -cellsize ] )
+            #srs = osr.SpatialReference()
+            #srs.SetWellKnownGeogCS("WGS84")
+            #dst_ds.SetProjection( srs.ExportToWkt() )
+
+            for band in range(bandCount):
+                dstDs.GetRasterBand(band+1).WriteArray(newArray[band, :, :])
+
+    def getArray(self, filename, bandidx):
+        ds = gdal.Open(filename, GA_ReadOnly)
+        band = ds.GetRasterBand(bandidx)
+        array = band.ReadAsArray()
+        nodata = band.GetNoDataValue()
+        return (array, nodata)
+
 
 mosaicWidget = MosaicWidget(iface.mainWindow())
 
