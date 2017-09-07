@@ -90,29 +90,35 @@ class MosaicWidget(BASE, WIDGET):
             self.sliderEndDate.setValue(maxYear)
 
     def createMosaic(self):
-        extent = self.extentBox.currentExtent()
+        mosaicFunction = mosaicFunctions[self.comboMosaicType.currentIndex()]
+        xmin = float(self.textXMin.text())
+        xmax = float(self.textXMax.text())
+        ymin = float(self.textYMin.text())
+        ymax = float(self.textYMax.text())
+        extent = QgsRectangle(QgsPoint(xmin, ymin), QgsPoint(xmax, ymax))
         txt = self.comboCoverage.currentText()
         name, coverageName = txt.split(" : ")
         layers = self._loadedLayersForCoverage(name, coverageName)
         minYear = self.sliderStartDate.value()
         maxYear = self.sliderEndDate.value()
-        layerFiles = []
+        validLayers = []
         for layer in layers:
             time = parser.parse(layer.time())
             if (time.year >= minYear and time.year <= maxYear):
-                layerFiles.append(layer.layerFile(extent))
-        mosaicFunction = mosaicFunctions[self.comboMosaicType.currentIndex()]
-        if layerFiles:
+                validLayers.append(layer)
+
+        if validLayers:
             bandCount = layers[0].bandCount()
             width = layers[0].width()
             height = layers[0].height()
             newBands = []
+            times = [lay.time() for lay in validLayers]
             for band in range(bandCount):
-                bandData = [self.getArray(f, band + 1) for f in layerFiles]
-                newBands.append(mosaicFunction(bandData))
+                bandData = [self.getArray(lay.layerFile(extent), band + 1) for lay in validLayers]
+                newBands.append(mosaicFunction(bandData, times))
                 bandData = None
             newArray = np.array(newBands)
-            ds = gdal.Open(layerFiles[0], GA_ReadOnly)
+            ds = gdal.Open(validLayers[0].layerFile(extent), GA_ReadOnly)
             datatype = ds.GetRasterBand(1).DataType
             driver = gdal.GetDriverByName("GTiff")
             dstFilename = tempFilename("tif")

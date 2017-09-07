@@ -1,5 +1,6 @@
-from qgis.core import QgsRasterLayer
+from qgis.core import QgsRasterLayer, QgsRasterFileWriter, QgsRasterPipe
 from datacubeplugin.layers import uriFromComponents
+from qgiscommons2.files import tempFilename
 import owslib.wcs as wcs
 import os
 from dateutil import parser
@@ -150,5 +151,13 @@ class FileLayer():
         if extent in self._files:
             return self._files[extent]
         else:
-            #TODO
-            pass
+            filename = tempFilename("tif")
+            filewriter = QgsRasterFileWriter(filename)
+            pipe = QgsRasterPipe()
+            layer = self.layer()
+            provider = layer.dataProvider()
+            xSize = extent.width() / layer.rasterUnitsPerPixelX()
+            ySize = extent.width() / layer.rasterUnitsPerPixelY()
+            pipe.set(provider.clone())
+            filewriter.writeRaster(pipe, xSize, ySize, extent, provider.crs())
+            return filename
