@@ -10,19 +10,12 @@ import numpy as np
 from osgeo import gdal
 from osgeo.gdalconst import GA_ReadOnly
 from datacubeplugin.gui.selectextentmaptool import SelectExtentMapTool
+from datacubeplugin.mosaicfunctions import mosaicFunctions
 
 pluginPath = os.path.dirname(os.path.dirname(__file__))
 WIDGET, BASE = uic.loadUiType(
     os.path.join(pluginPath, 'ui', 'mosaicwidget.ui'))
 
-def mostRecent(values, times):
-    return values[-1]
-
-def leastRecent(values, times):
-    return values[0]
-
-mosaicFunctions = [mostRecent, leastRecent]
-mosaicFunctionNames = ["Most recent", "Least recent"]
 
 
 class MosaicWidget(BASE, WIDGET):
@@ -32,7 +25,7 @@ class MosaicWidget(BASE, WIDGET):
         self.setupUi(self)
         self.buttonCreateMosaic.clicked.connect(self.createMosaic)
         self.comboCoverage.currentIndexChanged.connect(self.updateDates)
-        self.comboMosaicType.addItems(mosaicFunctionNames)
+        self.comboMosaicType.addItems([f.name for f in mosaicFunctions])
         self.buttonLayerExtent.clicked.connect(self.useLayerExtent)
         self.buttonCanvasExtent.clicked.connect(self.useCanvasExtent)
         self.buttonSelectExtentOnCanvas.clicked.connect(self.selectExtentOnCanvas)
@@ -108,39 +101,37 @@ class MosaicWidget(BASE, WIDGET):
                 validLayers.append(layer)
 
         if validLayers:
-            bandCount = layers[0].bandCount()
-            width = layers[0].width()
-            height = layers[0].height()
+            ds = gdal.Open(validLayers[0].layerFile(extent), GA_ReadOnly)
+            datatype = ds.GetRasterBand(1).DataType
+            bandCount = ds.RasterCount
+            width = ds.RasterXSize
+            height = ds.RasterYSize
+            geotransform = ds.GetGeoTransform()
+            projection = ds.GetProjection()
             newBands = []
             times = [lay.time() for lay in validLayers]
             for band in range(bandCount):
                 bandData = [self.getArray(lay.layerFile(extent), band + 1) for lay in validLayers]
-                newBands.append(mosaicFunction(bandData, times))
+                newBands.append(mosaicFunction.compute(bandData, times))
                 bandData = None
-            newArray = np.array(newBands)
-            ds = gdal.Open(validLayers[0].layerFile(extent), GA_ReadOnly)
-            datatype = ds.GetRasterBand(1).DataType
             driver = gdal.GetDriverByName("GTiff")
             dstFilename = tempFilename("tif")
+            print dstFilename
             dstDs= driver.Create(dstFilename, width, height, bandCount, datatype)
 
-            ## These are only required if you wish to georeference (http://en.wikipedia.org/wiki/Georeference)
-            ## your output geotiff, you need to know what values to input, don't just use the ones below
-            #Coordinates of the lower left corner of the image
-            #in same units as spatial reference
-            #xllcorner=147.2
-            #yllcorner=-34.54
+            for i, band in enumerate(newBands):
+                print band
+                gdalBand = dstDs.GetRasterBand(i+1)
+                gdalBand.WriteArray(band)
+                gdalBand.FlushCache()
+                del band
 
-            #Cellsize in same units as spatial reference
-            #cellsize=0.01
+            dstDs.SetGeoTransform(geotransform)
+            dstDs.SetProjection(projection)
+            del dstDs
 
-            #dst_ds.SetGeoTransform( [ xllcorner, cellsize, 0, yllcorner, 0, -cellsize ] )
-            #srs = osr.SpatialReference()
-            #srs.SetWellKnownGeogCS("WGS84")
-            #dst_ds.SetProjection( srs.ExportToWkt() )
-
-            for band in range(bandCount):
-                dstDs.GetRasterBand(band+1).WriteArray(newArray[band, :, :])
+            layer = QgsRasterLayer(dstFilename, "Mosaic [%s]" % mosaicFunction.name, "gdal")
+            addLayerIntoGroup(layer, validLayers[0].coverageName())
 
     def getArray(self, filename, bandidx):
         ds = gdal.Open(filename, GA_ReadOnly)

@@ -43,6 +43,7 @@ class RegionSelectionMapTool(QgsMapTool):
 
     def canvasReleaseEvent(self, e):
         self.isEmittingPoint = False
+        plotWidget.show()
         plotWidget.setRectangle(self.rectangle())
         self.reset()
 

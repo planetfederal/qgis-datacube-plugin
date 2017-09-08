@@ -18,6 +18,7 @@ from datacubeplugin.connectors import WCSConnector, FileConnector
 from datacubeplugin.gui.plotwidget import plotWidget
 from datacubeplugin.gui.mosaicwidget import mosaicWidget
 from datacubeplugin import plotparams
+from datacubeplugin.utils import addLayerIntoGroup
 
 pluginPath = os.path.dirname(os.path.dirname(__file__))
 WIDGET, BASE = uic.loadUiType(
@@ -254,15 +255,7 @@ class LayerTreeItem(QTreeWidgetItem):
                 layer = self.layer.layer()
                 if layer.isValid():
                     coverageName = self.layer.coverageName()
-                    root = QgsProject.instance().layerTreeRoot()
-                    group = None
-                    for child in root.children():
-                        if isinstance(child, QgsLayerTreeGroup) and child.name() == coverageName:
-                            group = child
-                    if group is None:
-                        group = root.addGroup(coverageName)
-                    QgsMapLayerRegistry.instance().addMapLayer(layer, False)
-                    group.addLayer(layer)
+                    addLayerIntoGroup(layer, coverageName)
                     name = self.layer.datasetName()
                     try:
                         count = layers._bandCount[name][coverageName]
