@@ -11,6 +11,7 @@ from osgeo import gdal
 from osgeo.gdalconst import GA_ReadOnly
 from datacubeplugin.gui.selectextentmaptool import SelectExtentMapTool
 from datacubeplugin.mosaicfunctions import mosaicFunctions
+from datacubeplugin.utils import addLayerIntoGroup
 
 pluginPath = os.path.dirname(os.path.dirname(__file__))
 WIDGET, BASE = uic.loadUiType(

@@ -14,6 +14,7 @@ from qgiscommons2.layers import layerFromSource, WrongLayerSourceException
 from qgiscommons2.gui import askForFiles
 from dateutil import parser
 import csv
+from datetime import datetime
 
 pluginPath = os.path.dirname(os.path.dirname(__file__))
 WIDGET, BASE = uic.loadUiType(
@@ -22,7 +23,7 @@ WIDGET, BASE = uic.loadUiType(
 
 class PlotWidget(BASE, WIDGET):
 
-    plotDataChanged = pyqtSignal(int, int, int ,int)
+    plotDataChanged = pyqtSignal(datetime, datetime, float ,float)
 
     def __init__(self, parent=None):
         super(PlotWidget, self).__init__(parent)
@@ -71,6 +72,7 @@ class PlotWidget(BASE, WIDGET):
         self.plot()
 
     def plot(self, filter=None):
+        print filter
         if self.parameter is None or self.coverage is None or self.dataset is None:
             self.buttonSave.setEnabled(False)
             return
@@ -137,13 +139,14 @@ class PlotWidget(BASE, WIDGET):
             ymax = max([max(v) for v in y])
 
         if filter is None:
-            xmin = min(self.data.keys()).year
-            xmax = max(self.data.keys()).year
+            print self.data.keys()
+            xmin = min(self.data.keys())
+            xmax = max(self.data.keys())
             self.plotDataChanged.emit(xmin, xmax, ymin, ymax)
         else:
             datesToRemove = []
             for d in self.data.keys():
-                if d.year < filter[0] or d.year > filter[1]:
+                if d < filter[0] or d > filter[1]:
                     datesToRemove.append(d)
             for d in datesToRemove:
                 del self.data[d]

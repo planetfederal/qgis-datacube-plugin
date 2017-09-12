@@ -18,7 +18,7 @@ from datacubeplugin.connectors import WCSConnector, FileConnector
 from datacubeplugin.gui.plotwidget import plotWidget
 from datacubeplugin.gui.mosaicwidget import mosaicWidget
 from datacubeplugin import plotparams
-from datacubeplugin.utils import addLayerIntoGroup
+from datacubeplugin.utils import addLayerIntoGroup, dateFromDays, daysFromDate
 
 pluginPath = os.path.dirname(os.path.dirname(__file__))
 WIDGET, BASE = uic.loadUiType(
@@ -59,16 +59,23 @@ class DataCubeWidget(BASE, WIDGET):
         plotWidget.plotDataChanged.connect(self.plotDataChanged)
 
     def plotDataFilterChanged(self):
-        xmin = self.sliderStartDate.value()
-        xmax = self.sliderEndDate.value()
+        xmin = dateFromDays(self.sliderStartDate.value())
+        xmax = dateFromDays(self.sliderEndDate.value())
         ymin = self.sliderMinY.value()
         ymax = self.sliderMaxY.value()
-        plotWidget.plot([xmin, xmax, ymin, ymax])
+        self.txtStartDate.setText(str(xmin).split(" ")[0])
+        self.txtEndDate.setText(str(xmax).split(" ")[0])
+        self.txtMinY.setText(str(ymin))
+        self.txtMaxY.setText(str(ymax))
+        _filter = [xmin, xmax, ymin, ymax]
+        plotWidget.plot(_filter)
 
     def plotDataChanged(self, xmin, xmax, ymin, ymax):
         widgets = [self.sliderMinY, self.sliderMaxY, self.sliderStartDate, self.sliderEndDate]
+
         for w in widgets:
             w.blockSignals(True)
+
         self.sliderMinY.setMinimum(ymin)
         self.sliderMaxY.setMinimum(ymin)
         self.sliderMinY.setMaximum(ymax)
@@ -76,12 +83,20 @@ class DataCubeWidget(BASE, WIDGET):
         self.sliderMaxY.setValue(ymax)
         self.sliderMinY.setValue(ymin)
 
-        self.sliderStartDate.setMinimum(xmin)
-        self.sliderEndDate.setMinimum(xmin)
-        self.sliderStartDate.setMaximum(xmax)
-        self.sliderEndDate.setMaximum(xmax)
-        self.sliderStartDate.setValue(xmin)
-        self.sliderEndDate.setValue(xmax)
+        print xmin
+
+        self.sliderStartDate.setMinimum(daysFromDate(xmin))
+        self.sliderEndDate.setMinimum(daysFromDate(xmin))
+        self.sliderStartDate.setMaximum(daysFromDate(xmax))
+        self.sliderEndDate.setMaximum(daysFromDate(xmax))
+        self.sliderStartDate.setValue(daysFromDate(xmin))
+        self.sliderEndDate.setValue(daysFromDate(xmax))
+
+        self.txtStartDate.setText(str(xmin).split(" ")[0])
+        self.txtEndDate.setText(str(xmax).split(" ")[0])
+        self.txtMinY.setText(str(ymin))
+        self.txtMaxY.setText(str(ymax))
+
         for w in widgets:
             w.blockSignals(False)
 

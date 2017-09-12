@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>470</width>
-    <height>424</height>
+    <width>426</width>
+    <height>506</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -121,53 +121,6 @@
         <string>Plot</string>
        </attribute>
        <layout class="QGridLayout" name="gridLayout_2">
-        <item row="2" column="1" colspan="4">
-         <widget class="QComboBox" name="comboLayerToPlot"/>
-        </item>
-        <item row="1" column="0" colspan="5">
-         <widget class="Line" name="line_2">
-          <property name="orientation">
-           <enum>Qt::Horizontal</enum>
-          </property>
-         </widget>
-        </item>
-        <item row="9" column="0" colspan="5">
-         <layout class="QHBoxLayout" name="horizontalLayout_3">
-          <item>
-           <spacer name="horizontalSpacer_3">
-            <property name="orientation">
-             <enum>Qt::Horizontal</enum>
-            </property>
-            <property name="sizeHint" stdset="0">
-             <size>
-              <width>40</width>
-              <height>20</height>
-             </size>
-            </property>
-           </spacer>
-          </item>
-          <item>
-           <widget class="QLabel" name="label_11">
-            <property name="text">
-             <string>Y axis </string>
-            </property>
-           </widget>
-          </item>
-          <item>
-           <spacer name="horizontalSpacer_2">
-            <property name="orientation">
-             <enum>Qt::Horizontal</enum>
-            </property>
-            <property name="sizeHint" stdset="0">
-             <size>
-              <width>40</width>
-              <height>20</height>
-             </size>
-            </property>
-           </spacer>
-          </item>
-         </layout>
-        </item>
         <item row="0" column="0" colspan="5">
          <layout class="QHBoxLayout" name="horizontalLayout_2">
           <item>
@@ -208,10 +161,71 @@
           </item>
          </layout>
         </item>
+        <item row="2" column="1" colspan="4">
+         <widget class="QComboBox" name="comboLayerToPlot"/>
+        </item>
+        <item row="1" column="0" colspan="5">
+         <widget class="Line" name="line_2">
+          <property name="orientation">
+           <enum>Qt::Horizontal</enum>
+          </property>
+         </widget>
+        </item>
+        <item row="10" column="0" colspan="5">
+         <layout class="QHBoxLayout" name="horizontalLayout_3">
+          <item>
+           <spacer name="horizontalSpacer_3">
+            <property name="orientation">
+             <enum>Qt::Horizontal</enum>
+            </property>
+            <property name="sizeHint" stdset="0">
+             <size>
+              <width>40</width>
+              <height>20</height>
+             </size>
+            </property>
+           </spacer>
+          </item>
+          <item>
+           <widget class="QLabel" name="label_11">
+            <property name="text">
+             <string>Y axis </string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <spacer name="horizontalSpacer_2">
+            <property name="orientation">
+             <enum>Qt::Horizontal</enum>
+            </property>
+            <property name="sizeHint" stdset="0">
+             <size>
+              <width>40</width>
+              <height>20</height>
+             </size>
+            </property>
+           </spacer>
+          </item>
+         </layout>
+        </item>
+        <item row="17" column="0" colspan="5">
+         <widget class="Line" name="line_3">
+          <property name="orientation">
+           <enum>Qt::Horizontal</enum>
+          </property>
+         </widget>
+        </item>
         <item row="2" column="0">
          <widget class="QLabel" name="label_5">
           <property name="text">
            <string>Coverage</string>
+          </property>
+         </widget>
+        </item>
+        <item row="15" column="0">
+         <widget class="QLabel" name="label_8">
+          <property name="text">
+           <string>Max value</string>
           </property>
          </widget>
         </item>
@@ -222,33 +236,10 @@
           </property>
          </widget>
         </item>
-        <item row="3" column="1" colspan="4">
-         <widget class="QComboBox" name="comboParameterToPlot"/>
-        </item>
-        <item row="17" column="4">
-         <spacer name="verticalSpacer_2">
-          <property name="orientation">
-           <enum>Qt::Vertical</enum>
-          </property>
-          <property name="sizeHint" stdset="0">
-           <size>
-            <width>20</width>
-            <height>40</height>
-           </size>
-          </property>
-         </spacer>
-        </item>
-        <item row="7" column="0">
-         <widget class="QLabel" name="label_10">
+        <item row="13" column="0">
+         <widget class="QLabel" name="label_7">
           <property name="text">
-           <string>Start date</string>
-          </property>
-         </widget>
-        </item>
-        <item row="16" column="0" colspan="5">
-         <widget class="Line" name="line_3">
-          <property name="orientation">
-           <enum>Qt::Horizontal</enum>
+           <string>Min value</string>
           </property>
          </widget>
         </item>
@@ -289,15 +280,24 @@
           </item>
          </layout>
         </item>
-        <item row="14" column="0">
-         <widget class="QLabel" name="label_8">
-          <property name="text">
-           <string>Max value</string>
-          </property>
-         </widget>
+        <item row="3" column="1" colspan="4">
+         <widget class="QComboBox" name="comboParameterToPlot"/>
         </item>
-        <item row="7" column="1" colspan="4">
-         <widget class="QSlider" name="sliderStartDate">
+        <item row="18" column="4">
+         <spacer name="verticalSpacer_2">
+          <property name="orientation">
+           <enum>Qt::Vertical</enum>
+          </property>
+          <property name="sizeHint" stdset="0">
+           <size>
+            <width>20</width>
+            <height>40</height>
+           </size>
+          </property>
+         </spacer>
+        </item>
+        <item row="14" column="1" colspan="4">
+         <widget class="QSlider" name="sliderMinY">
           <property name="orientation">
            <enum>Qt::Horizontal</enum>
           </property>
@@ -306,7 +306,26 @@
           </property>
          </widget>
         </item>
-        <item row="14" column="1" colspan="4">
+        <item row="14" column="0">
+         <widget class="QLineEdit" name="txtMinY">
+          <property name="enabled">
+           <bool>false</bool>
+          </property>
+          <property name="sizePolicy">
+           <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
+            <horstretch>0</horstretch>
+            <verstretch>0</verstretch>
+           </sizepolicy>
+          </property>
+          <property name="maximumSize">
+           <size>
+            <width>100</width>
+            <height>16777215</height>
+           </size>
+          </property>
+         </widget>
+        </item>
+        <item row="16" column="1" colspan="4">
          <widget class="QSlider" name="sliderMaxY">
           <property name="orientation">
            <enum>Qt::Horizontal</enum>
@@ -320,14 +339,43 @@
           </property>
          </widget>
         </item>
-        <item row="12" column="0">
-         <widget class="QLabel" name="label_7">
-          <property name="text">
-           <string>Min value</string>
+        <item row="16" column="0">
+         <widget class="QLineEdit" name="txtMaxY">
+          <property name="enabled">
+           <bool>false</bool>
+          </property>
+          <property name="sizePolicy">
+           <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
+            <horstretch>0</horstretch>
+            <verstretch>0</verstretch>
+           </sizepolicy>
+          </property>
+          <property name="maximumSize">
+           <size>
+            <width>100</width>
+            <height>16777215</height>
+           </size>
           </property>
          </widget>
         </item>
-        <item row="8" column="1" colspan="4">
+        <item row="5" column="0">
+         <widget class="QLabel" name="label_10">
+          <property name="text">
+           <string>Start date</string>
+          </property>
+         </widget>
+        </item>
+        <item row="7" column="1" colspan="4">
+         <widget class="QSlider" name="sliderStartDate">
+          <property name="orientation">
+           <enum>Qt::Horizontal</enum>
+          </property>
+          <property name="tickPosition">
+           <enum>QSlider::NoTicks</enum>
+          </property>
+         </widget>
+        </item>
+        <item row="9" column="1" colspan="4">
          <widget class="QSlider" name="sliderEndDate">
           <property name="orientation">
            <enum>Qt::Horizontal</enum>
@@ -337,13 +385,41 @@
           </property>
          </widget>
         </item>
-        <item row="12" column="1" colspan="4">
-         <widget class="QSlider" name="sliderMinY">
-          <property name="orientation">
-           <enum>Qt::Horizontal</enum>
+        <item row="9" column="0">
+         <widget class="QLineEdit" name="txtEndDate">
+          <property name="enabled">
+           <bool>false</bool>
           </property>
-          <property name="tickPosition">
-           <enum>QSlider::NoTicks</enum>
+          <property name="sizePolicy">
+           <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
+            <horstretch>0</horstretch>
+            <verstretch>0</verstretch>
+           </sizepolicy>
+          </property>
+          <property name="maximumSize">
+           <size>
+            <width>100</width>
+            <height>16777215</height>
+           </size>
+          </property>
+         </widget>
+        </item>
+        <item row="7" column="0">
+         <widget class="QLineEdit" name="txtStartDate">
+          <property name="enabled">
+           <bool>false</bool>
+          </property>
+          <property name="sizePolicy">
+           <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
+            <horstretch>0</horstretch>
+            <verstretch>0</verstretch>
+           </sizepolicy>
+          </property>
+          <property name="maximumSize">
+           <size>
+            <width>100</width>
+            <height>16777215</height>
+           </size>
           </property>
          </widget>
         </item>
