@@ -28,7 +28,9 @@ class EndpointSelectionDialog(BASE, WIDGET):
         self.url = self.comboBox.currentText()
         endpoints = pluginSetting(self.ENDPOINTS)
         if endpoints:
-            setPluginSetting(self.ENDPOINTS, endpoints + ";" + self.url)
+            endpoints = set(endpoints.split(";"))
+            endpoints.add(self.url)
+            setPluginSetting(self.ENDPOINTS, ";".join(endpoints))
         else:
             setPluginSetting(self.ENDPOINTS, self.url)
         self.close()
