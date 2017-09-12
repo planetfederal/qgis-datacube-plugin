@@ -1,17 +1,18 @@
 import os
 from qgis.core import *
+from qgis.gui import QgsMessageBar
 from qgis.utils import iface
 from qgis.PyQt import uic
 from datacubeplugin import layers
 from qgiscommons2.layers import layerFromSource, WrongLayerSourceException
 from qgiscommons2.files import tempFilename
 from dateutil import parser
-import numpy as np
 from osgeo import gdal
 from osgeo.gdalconst import GA_ReadOnly
 from datacubeplugin.gui.selectextentmaptool import SelectExtentMapTool
 from datacubeplugin.mosaicfunctions import mosaicFunctions
-from datacubeplugin.utils import addLayerIntoGroup
+from datacubeplugin.utils import addLayerIntoGroup, dateFromDays, daysFromDate
+
 
 pluginPath = os.path.dirname(os.path.dirname(__file__))
 WIDGET, BASE = uic.loadUiType(
@@ -31,8 +32,16 @@ class MosaicWidget(BASE, WIDGET):
         self.buttonCanvasExtent.clicked.connect(self.useCanvasExtent)
         self.buttonSelectExtentOnCanvas.clicked.connect(self.selectExtentOnCanvas)
         self.mapTool = SelectExtentMapTool(iface.mapCanvas(), self)
+        self.sliderStartDate.valueChanged.connect(self.startDateChanged)
+        self.sliderEndDate.valueChanged.connect(self.endDateChanged)
 
         iface.mapCanvas().mapToolSet.connect(self.unsetTool)
+
+    def startDateChanged(self):
+        self.txtStartDate.setText(str(dateFromDays(self.sliderStartDate.value())).split(" ")[0])
+
+    def endDateChanged(self):
+        self.txtEndDate.setText(str(dateFromDays(self.sliderEndDate.value())).split(" ")[0])
 
     def useCanvasExtent(self):
         self.setExtent(iface.mapCanvas().extent())
@@ -73,32 +82,42 @@ class MosaicWidget(BASE, WIDGET):
         name, coverageName = txt.split(" : ")
         layers = self._loadedLayersForCoverage(name, coverageName)
         if layers:
-            years = [parser.parse(lay.time()).year for lay in layers]
-            minYear = min(years)
-            maxYear = max(years)
-            self.sliderStartDate.setMinimum(minYear)
-            self.sliderStartDate.setMaximum(maxYear)
-            self.sliderStartDate.setValue(minYear)
-            self.sliderEndDate.setMinimum(minYear)
-            self.sliderEndDate.setMaximum(maxYear)
-            self.sliderEndDate.setValue(maxYear)
+            dates = [parser.parse(lay.time()) for lay in layers]
+            minDays = daysFromDate(min(dates))
+            maxDays = daysFromDate(max(dates))
+            self.sliderStartDate.setMinimum(minDays)
+            self.sliderStartDate.setMaximum(maxDays)
+            self.sliderStartDate.setValue(minDays)
+            self.sliderEndDate.setMinimum(minDays)
+            self.sliderEndDate.setMaximum(maxDays)
+            self.sliderEndDate.setValue(maxDays)
 
     def createMosaic(self):
         mosaicFunction = mosaicFunctions[self.comboMosaicType.currentIndex()]
-        xmin = float(self.textXMin.text())
-        xmax = float(self.textXMax.text())
-        ymin = float(self.textYMin.text())
-        ymax = float(self.textYMax.text())
+        def getValue(textbox, paramName):
+            try:
+                v = float(textbox.text())
+                return v
+            except:
+                iface.messageBar().pushMessage("", "Wrong value for parameter %s: %s" % (paramName, textbox.text()),
+                                               level=QgsMessageBar.WARNING)
+                raise
+        try:
+            widgets = [self.textXMin, self.textXMax, self.textYMin, self.textYMax]
+            names = ["X min", "X max", "Y min", "Y max"]
+            xmin, xmax, ymin, ymax = [getValue(w, n) for w, n in zip(widgets, names)]
+        except:
+            return
         extent = QgsRectangle(QgsPoint(xmin, ymin), QgsPoint(xmax, ymax))
         txt = self.comboCoverage.currentText()
         name, coverageName = txt.split(" : ")
         layers = self._loadedLayersForCoverage(name, coverageName)
-        minYear = self.sliderStartDate.value()
-        maxYear = self.sliderEndDate.value()
+        minDays = daysFromDate(self.sliderStartDate.value())
+        maxDays = daysFromDate(self.sliderEndDate.value())
         validLayers = []
         for layer in layers:
-            time = parser.parse(layer.time())
-            if (time.year >= minYear and time.year <= maxYear):
+            time = daysFromDate(parser.parse(layer.time()))
+            if (time >= minDays and time <= maxDays):
                 validLayers.append(layer)
 
         if validLayers:
