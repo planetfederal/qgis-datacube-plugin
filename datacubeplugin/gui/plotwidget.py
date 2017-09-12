@@ -72,7 +72,6 @@ class PlotWidget(BASE, WIDGET):
         self.plot()
 
     def plot(self, filter=None):
-        print filter
         if self.parameter is None or self.coverage is None or self.dataset is None:
             self.buttonSave.setEnabled(False)
             return
