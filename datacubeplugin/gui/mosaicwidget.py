@@ -112,8 +112,8 @@ class MosaicWidget(BASE, WIDGET):
         txt = self.comboCoverage.currentText()
         name, coverageName = txt.split(" : ")
         layers = self._loadedLayersForCoverage(name, coverageName)
-        minDays = daysFromDate(self.sliderStartDate.value())
-        maxDays = daysFromDate(self.sliderEndDate.value())
+        minDays = self.sliderStartDate.value()
+        maxDays = self.sliderEndDate.value()
         validLayers = []
         for layer in layers:
             time = daysFromDate(parser.parse(layer.time()))
