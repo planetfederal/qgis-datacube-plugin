@@ -5,9 +5,11 @@ from qgis.PyQt import uic
 from qgis.PyQt.QtWidgets import QHBoxLayout
 from qgis.PyQt.QtCore import pyqtSignal
 
-from matplotlib.backends.backend_qt4agg import FigureCanvasQTAgg as FigureCanvas
-import matplotlib.pyplot as plt
 import matplotlib
+from matplotlib.backends.backend_qt4agg import FigureCanvasQTAgg as FigureCanvas
+#import matplotlib.pyplot as plt
+from matplotlib.figure import Figure
+from matplotlib import axes
 from datacubeplugin import plotparams
 from datacubeplugin import layers
 from qgiscommons2.layers import layerFromSource, WrongLayerSourceException
@@ -33,7 +35,7 @@ class PlotWidget(BASE, WIDGET):
         self.pt = None
         self.dataset = None
         self.coverage = None
-        self.figure = plt.figure()
+        self.figure = Figure()
         self.canvas = FigureCanvas(self.figure)
         layout = QHBoxLayout()
         layout.addWidget(self.canvas)
@@ -72,11 +74,12 @@ class PlotWidget(BASE, WIDGET):
         self.plot()
 
     def plot(self, filter=None):
+
         if self.parameter is None or self.coverage is None or self.dataset is None:
             self.buttonSave.setEnabled(False)
             return
 
-        plt.gcf().clear()
+        self.figure.clear()
 
         canvasLayers = []
         try:
@@ -164,16 +167,17 @@ class PlotWidget(BASE, WIDGET):
         for d in datesToRemove:
             del self.data[d]
 
+        axes = self.figure.add_subplot(1, 1, 1)
         x = matplotlib.dates.date2num(self.data.keys())
         if len(pts) == 1:
             y = [v[0][0] for v in self.data.values() if v]
-            plt.plot_date(x,y)
+            axes.plot_date(x,y)
         else:
             y = [[v[0] for v in lis] for lis in self.data.values()]
-            plt.boxplot(y, positions = x)
-            plt.gca().set_xticklabels([str(d).split(" ")[0] for d in self.data.keys()], rotation=45)
+            axes.boxplot(y, positions = x)
+            axes.set_xticklabels([str(d).split(" ")[0] for d in self.data.keys()], rotation=45)
 
-        plt.gcf().autofmt_xdate()
+        self.figure.autofmt_xdate()
 
         self.buttonSave.setEnabled(True)
         self.canvas.draw()
