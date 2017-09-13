@@ -12,13 +12,12 @@ from osgeo.gdalconst import GA_ReadOnly
 from datacubeplugin.gui.selectextentmaptool import SelectExtentMapTool
 from datacubeplugin.mosaicfunctions import mosaicFunctions
 from datacubeplugin.utils import addLayerIntoGroup, dateFromDays, daysFromDate
+from qgiscommons2.gui import execute
 
 
 pluginPath = os.path.dirname(os.path.dirname(__file__))
 WIDGET, BASE = uic.loadUiType(
     os.path.join(pluginPath, 'ui', 'mosaicwidget.ui'))
-
-
 
 class MosaicWidget(BASE, WIDGET):
 
@@ -93,6 +92,11 @@ class MosaicWidget(BASE, WIDGET):
             self.sliderEndDate.setValue(maxDays)
 
     def createMosaic(self):
+        execute(self._createMosaic)
+        iface.messageBar().pushMessage("", "Mosaic has been correctly created and added to project.",
+                                               level=QgsMessageBar.INFO)
+
+    def _createMosaic(self):
         mosaicFunction = mosaicFunctions[self.comboMosaicType.currentIndex()]
         def getValue(textbox, paramName):
             try:
