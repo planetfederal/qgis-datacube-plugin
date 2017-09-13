@@ -71,9 +71,13 @@ class WCSLayer():
         if extent in self._files:
             return self._files[extent]
         else:
-            #TODO
-            pass
-
+            filename = tempFilename("tif")
+            bbox = [extent.xMinimum(), extent.yMinimum(), extent.xMaximum(), extent.yMaximum()]
+            output=wcs.getCoverage(identifier=self.coverageName(),time=[self.time()],bbox=bbox,format='GeoTIFF')
+            with open(filename,'wb') as f:
+                f.write(output.read())
+            self._files[extent] = filename
+            return filename
 
 class FileConnector():
 
@@ -84,7 +88,6 @@ class FileConnector():
             path = os.path.join(folder, f)
             if os.path.isdir(path):
                 self._coverages[f] = FileCoverage(path)
-
 
     def coverages(self):
         return self._coverages.keys()
@@ -160,4 +163,5 @@ class FileLayer():
             ySize = extent.width() / layer.rasterUnitsPerPixelY()
             pipe.set(provider.clone())
             filewriter.writeRaster(pipe, xSize, ySize, extent, provider.crs())
+            self._files[extent] = filename
             return filename
