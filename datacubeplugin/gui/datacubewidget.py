@@ -14,7 +14,7 @@ from endpointselectiondialog import EndpointSelectionDialog
 
 from datacubeplugin.selectionmaptools import PointSelectionMapTool, RegionSelectionMapTool
 from datacubeplugin import layers
-from datacubeplugin.connectors import WCSConnector, FileConnector
+from datacubeplugin.connectors import connectors
 from datacubeplugin.gui.plotwidget import plotWidget
 from datacubeplugin.gui.mosaicwidget import mosaicWidget
 from datacubeplugin import plotparams
@@ -223,10 +223,13 @@ class AddEndpointTreeItem(TreeItemWithLink):
 
     def _addEndpoint(self, endpoint):
         iface.mainWindow().statusBar().showMessage("Retrieving coverages info from endpoint...")
-        if os.path.exists(endpoint):
-            connector = FileConnector(endpoint)
-        else:
-            connector = WCSConnector(endpoint)
+        connector = None
+        for c in connectors:
+            if c.isCompatible(endpoint):
+                connector = c(endpoint)
+                break
+        if connector is None:
+            return
         layers._layers[connector.name()] = {}
         coverages = connector.coverages()
         if coverages:
@@ -238,7 +241,7 @@ class AddEndpointTreeItem(TreeItemWithLink):
             item.setText(0, coverageName)
             endpointItem.addChild(item)
             coverage = connector.coverage(coverageName)
-            timepositions = coverage.timePositions()[:10]
+            timepositions = coverage.timePositions()
             timeLayers = []
             for time in timepositions:
                 layer = coverage.layerForTimePosition(time)

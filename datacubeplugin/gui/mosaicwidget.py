@@ -1,4 +1,5 @@
 import os
+import numpy as np
 from qgis.core import *
 from qgis.gui import QgsMessageBar
 from qgis.utils import iface
@@ -12,6 +13,7 @@ from osgeo.gdalconst import GA_ReadOnly
 from datacubeplugin.gui.selectextentmaptool import SelectExtentMapTool
 from datacubeplugin.mosaicfunctions import mosaicFunctions
 from datacubeplugin.utils import addLayerIntoGroup, dateFromDays, daysFromDate
+from datacubeplugin.landsat import CFMASK_BAND
 from qgiscommons2.gui import execute
 
 
@@ -135,16 +137,19 @@ class MosaicWidget(BASE, WIDGET):
             newBands = []
             times = [lay.time() for lay in validLayers]
             for band in range(bandCount):
-                bandData = [self.getArray(lay.layerFile(extent), band + 1) for lay in validLayers]
-                newBands.append(mosaicFunction.compute(bandData, times))
-                bandData = None
+                rows = []
+                for row in range(height):
+                    bandData = [self.getArray(lay.layerFile(extent), band + 1, row, width) for lay in validLayers]
+                    rows.append(mosaicFunction.compute(bandData, times))
+                    bandData = None
+                newBand = np.vstack(rows)
+                newBands.append(newBand)
+
             driver = gdal.GetDriverByName("GTiff")
             dstFilename = tempFilename("tif")
-            print dstFilename
             dstDs= driver.Create(dstFilename, width, height, bandCount, datatype)
 
             for i, band in enumerate(newBands):
-                print band
                 gdalBand = dstDs.GetRasterBand(i+1)
                 gdalBand.WriteArray(band)
                 gdalBand.FlushCache()
@@ -157,12 +162,13 @@ class MosaicWidget(BASE, WIDGET):
             layer = QgsRasterLayer(dstFilename, "Mosaic [%s]" % mosaicFunction.name, "gdal")
             addLayerIntoGroup(layer, validLayers[0].coverageName())
 
-    def getArray(self, filename, bandidx):
+    def getArray(self, filename, bandidx, row, width):
         ds = gdal.Open(filename, GA_ReadOnly)
         band = ds.GetRasterBand(bandidx)
-        array = band.ReadAsArray()
-        nodata = band.GetNoDataValue()
-        return (array, nodata)
+        array = band.ReadAsArray(0, row, width, 1)
+        nodataband = ds.GetRasterBand(1)#CFMASK_BAND)
+        nodataarray = nodataband.ReadAsArray(0, row, width, 1)
+        return (array, nodataarray)
 
 
 mosaicWidget = MosaicWidget(iface.mainWindow())

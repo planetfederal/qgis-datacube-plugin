@@ -11,7 +11,7 @@ class WCSConnector():
         self.url = url
         self._coverages = {}
         w = wcs.WebCoverageService(url, version='1.0.0')
-        coverages = w.contents.keys()[:1]
+        coverages = w.contents.keys()
         for name in coverages:
             coverage = w[name]
             self._coverages[name] = WCSCoverage(url, name, coverage)
@@ -25,6 +25,12 @@ class WCSConnector():
 
     def name(self):
         return self.url
+
+    @staticmethod
+    def isCompatible(endpoint):
+        #TODO
+        return False
+
 
 
 class WCSCoverage():
@@ -48,11 +54,11 @@ class WCSLayer():
         self._time = time
 
     def source(self):
-        uri = uriFromComponents(self.url, self.coverageName, self._time)
+        uri = uriFromComponents(self.url, self.coverageName(), self.time())
         return str(uri.encodedUri())
 
     def name(self):
-        return self.time
+        return self.time()
 
     def time(self):
         return self._time
@@ -97,6 +103,10 @@ class FileConnector():
 
     def name(self):
         return self.folder
+
+    @staticmethod
+    def isCompatible(endpoint):
+        return os.path.exists(endpoint)
 
 
 class FileCoverage():
@@ -165,3 +175,5 @@ class FileLayer():
             filewriter.writeRaster(pipe, xSize, ySize, extent, provider.crs())
             self._files[extent] = filename
             return filename
+
+connectors = [WCSConnector, FileConnector]
