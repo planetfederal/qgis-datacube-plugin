@@ -58,12 +58,6 @@ Go to :menuselection:`Plugins --> Install plugin from ZIP` menu item. Then, brow
    You can download Boundless QGIS plugins ZIP packages from the *Browse the Repository* section in the `Boundless QGIS Plugin Repository`_ page.
 
 
-Post installation notes
------------------------
-
-.. note::
-
-   Because this plugin adds a new renderer, you will have to **restart QGIS before you can use it**.
 
 .. External links
 .. _Boundless QGIS Plugin Repository: http://qgis.boundlessgeo.com

@@ -13,4 +13,3 @@ Documentation contents:
 
    installation
    usage
-   settingsconf
