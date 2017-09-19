@@ -5,16 +5,37 @@ import owslib.wcs as wcs
 import os
 from dateutil import parser
 
+class Layer():
+
+    def __init__(self):
+        self._files = {}
+
+    def layerFile(self, extent=None):
+        if extent in self._files:
+            return self._files[extent]
+        else:
+            filename = tempFilename("tif")
+            filewriter = QgsRasterFileWriter(filename)
+            pipe = QgsRasterPipe()
+            layer = self.layer()
+            provider = layer.dataProvider()
+            xSize = extent.width() / layer.rasterUnitsPerPixelX()
+            ySize = extent.width() / layer.rasterUnitsPerPixelY()
+            pipe.set(provider.clone())
+            filewriter.writeRaster(pipe, xSize, ySize, extent, provider.crs())
+            self._files[extent] = filename
+            return filename
+
 class WCSConnector():
 
     def __init__(self, url):
         self.url = url
         self._coverages = {}
-        w = wcs.WebCoverageService(url, version='1.0.0')
-        coverages = w.contents.keys()
+        self.service = wcs.WebCoverageService(url, version='1.0.0')
+        coverages = self.service.contents.keys()
         for name in coverages:
-            coverage = w[name]
-            self._coverages[name] = WCSCoverage(url, name, coverage)
+            coverage = self.service[name]
+            self._coverages[name] = WCSCoverage(self.service, url, name, coverage)
 
 
     def coverages(self):
@@ -28,34 +49,39 @@ class WCSConnector():
 
     @staticmethod
     def isCompatible(endpoint):
-        #TODO
-        return False
+        return endpoint.startswith("http")
 
 
 
 class WCSCoverage():
 
-    def __init__(self, url, coverageName, coverage):
+    def __init__(self, service, url, coverageName, coverage):
+        self.service = service
         self.url = url
         self.coverageName = coverageName
-        self._timepositions = coverage.timepositions
+        self._timepositions = [s.replace("Z", "") for s in coverage.timepositions]
+        self.bands = coverage.axisDescriptions[0].values
+        self.crs = coverage.supportedCRS[0]
 
     def timePositions(self):
         return self._timepositions
 
     def layerForTimePosition(self, time):
-        return WCSLayer(self.url, self.coverageName, time)
+        return WCSLayer(self, time)
 
-class WCSLayer():
+class WCSLayer(Layer):
 
-    def __init__(self, url, coverageName, time):
-        self.url = url
-        self._coverageName = coverageName
+    def __init__(self, coverage, time):
+        Layer.__init__(self)
+        self.coverage = coverage
         self._time = time
 
     def source(self):
-        uri = uriFromComponents(self.url, self.coverageName(), self.time())
+        uri = uriFromComponents(self.coverage.url, self.coverage.coverageName, self.time())
         return str(uri.encodedUri())
+
+    def bands(self):
+        return self.coverage.bands
 
     def name(self):
         return self.time()
@@ -64,26 +90,14 @@ class WCSLayer():
         return self._time
 
     def datasetName(self):
-        return self.url
+        return self.coverage.url
 
     def coverageName(self):
-        return self._coverageName
+        return self.coverage.coverageName
 
     def layer(self):
         return QgsRasterLayer(self.source(), self.name(), "wcs")
 
-    _files = {}
-    def layerFile(self, extent=None):
-        if extent in self._files:
-            return self._files[extent]
-        else:
-            filename = tempFilename("tif")
-            bbox = [extent.xMinimum(), extent.yMinimum(), extent.xMaximum(), extent.yMaximum()]
-            output=wcs.getCoverage(identifier=self.coverageName(),time=[self.time()],bbox=bbox,format='GeoTIFF')
-            with open(filename,'wb') as f:
-                f.write(output.read())
-            self._files[extent] = filename
-            return filename
 
 class FileConnector():
 
@@ -132,15 +146,20 @@ class FileCoverage():
     def layerForTimePosition(self, time):
         return FileLayer(self.folder, time  + self._exts[time])
 
-class FileLayer():
+class FileLayer(Layer):
 
     def __init__(self, folder, filename):
+        Layer.__init__(self)
         self.folder = folder
-        self._time = os.path.splitext(filename)[0].replace("_", ":")
+        self._time = os.path.splitext(filename)[0].replace("_", ":").replace("Z", "")
         self._filename = filename
+        self._bands = ["Band 1"]
 
     def source(self):
         return os.path.join(self.folder, self._filename)
+
+    def bands(self):
+        return self._bands
 
     def name(self):
         return self.time()
@@ -157,23 +176,5 @@ class FileLayer():
     def layer(self):
         return QgsRasterLayer(self.source(), self.name(), "gdal")
 
-    _files = {}
-    def layerFile(self, extent=None):
-        if extent is None:
-            return self.source()
-        if extent in self._files:
-            return self._files[extent]
-        else:
-            filename = tempFilename("tif")
-            filewriter = QgsRasterFileWriter(filename)
-            pipe = QgsRasterPipe()
-            layer = self.layer()
-            provider = layer.dataProvider()
-            xSize = extent.width() / layer.rasterUnitsPerPixelX()
-            ySize = extent.width() / layer.rasterUnitsPerPixelY()
-            pipe.set(provider.clone())
-            filewriter.writeRaster(pipe, xSize, ySize, extent, provider.crs())
-            self._files[extent] = filename
-            return filename
 
 connectors = [WCSConnector, FileConnector]

@@ -31,21 +31,21 @@ class DataCubeWidget(BASE, WIDGET):
         super(DataCubeWidget, self).__init__(parent)
         self.setupUi(self)
 
+        self.plotParameters = []
+
         AddEndpointTreeItem(self.treeWidget.invisibleRootItem(),
                                 self.treeWidget, self)
 
         self.treeWidget.itemClicked.connect(self.treeItemClicked)
 
-        self.comboLayersSet.currentIndexChanged.connect(self.comboLayersChanged)
+        self.comboCoverageForRGB.currentIndexChanged.connect(self.coverageForRGBHasChanged)
 
         self.applyButton.clicked.connect(self.updateRGB)
         self.selectPointButton.clicked.connect(self.togglePointMapTool)
         self.selectRegionButton.clicked.connect(self.toggleRegionMapTool)
 
-        self.comboLayerToPlot.currentIndexChanged.connect(self.layerToPlotHasChanged)
+        self.comboLayerToPlot.currentIndexChanged.connect(self.coverageToPlotHasChanged)
         self.comboParameterToPlot.currentIndexChanged.connect(self.parameterToPlotHasChanged)
-
-        self.comboParameterToPlot.addItems([str(p) for p in plotparams.parameters])
 
         iface.mapCanvas().mapToolSet.connect(self.unsetTool)
 
@@ -83,14 +83,12 @@ class DataCubeWidget(BASE, WIDGET):
         self.sliderMaxY.setValue(ymax)
         self.sliderMinY.setValue(ymin)
 
-        print xmin
-
-        self.sliderStartDate.setMinimum(daysFromDate(xmin))
-        self.sliderEndDate.setMinimum(daysFromDate(xmin))
-        self.sliderStartDate.setMaximum(daysFromDate(xmax))
-        self.sliderEndDate.setMaximum(daysFromDate(xmax))
-        self.sliderStartDate.setValue(daysFromDate(xmin))
-        self.sliderEndDate.setValue(daysFromDate(xmax))
+        self.sliderStartDate.setMinimum(daysFromDate(xmin) - 1)
+        self.sliderEndDate.setMinimum(daysFromDate(xmin) - 1)
+        self.sliderStartDate.setMaximum(daysFromDate(xmax) + 1)
+        self.sliderEndDate.setMaximum(daysFromDate(xmax) + 1)
+        self.sliderStartDate.setValue(daysFromDate(xmin) - 1)
+        self.sliderEndDate.setValue(daysFromDate(xmax) + 1)
 
         self.txtStartDate.setText(str(xmin).split(" ")[0])
         self.txtEndDate.setText(str(xmax).split(" ")[0])
@@ -119,7 +117,7 @@ class DataCubeWidget(BASE, WIDGET):
         iface.mapCanvas().setMapTool(self.regionSelectionTool)
 
     def updateRGB(self):
-        name, coverageName = self.comboLayersSet.currentText().split(" : ")
+        name, coverageName = self.comboCoverageForRGB.currentText().split(" : ")
         r = self.comboR.currentIndex()
         g = self.comboG.currentIndex()
         b = self.comboB.currentIndex()
@@ -132,50 +130,43 @@ class DataCubeWidget(BASE, WIDGET):
             except WrongLayerSourceException:
                 pass
 
-    def comboLayersChanged(self):
+    def coverageForRGBHasChanged(self):
         self.updateRGBFields()
 
     def updateRGBFields(self, nameToUpdate = None, coverageNameToUpdate = None):
-        name, coverageName = self.comboLayersSet.currentText().split(" : ")
+        name, coverageName = self.comboCoverageForRGB.currentText().split(" : ")
         if nameToUpdate is not None and (name != nameToUpdate or coverageName != coverageNameToUpdate):
             return
+
+        bands = layers._layers[name][coverageName][0].bands()
         try:
-            bandCount = layers._bandCount[name][coverageName]
             r, g, b = layers._rendering[name][coverageName]
         except KeyError:
-            #TODO improve this
-            bandCount = 3
             r, g, b = (0, 1, 2)
 
-        items = [str(i + 1) for i in range(bandCount)]
         self.comboR.clear()
-        self.comboR.addItems(items)
+        self.comboR.addItems(bands)
         self.comboR.setCurrentIndex(r)
         self.comboG.clear()
-        self.comboG.addItems(items)
+        self.comboG.addItems(bands)
         self.comboG.setCurrentIndex(g)
         self.comboB.clear()
-        self.comboB.addItems(items)
+        self.comboB.addItems(bands)
         self.comboB.setCurrentIndex(b)
 
-
-    def updateComboLayersSet(self):
-        allItems = []
-        for name in layers._layers.keys():
-            for coverageName in layers._layers[name].keys():
-                allItems.append(name + " : " + coverageName)
-
-        self.comboLayersSet.clear()
-        self.comboLayersSet.addItems(allItems)
-
     def parameterToPlotHasChanged(self):
-        param = plotparams.parameters[self.comboParameterToPlot.currentIndex()]
+        param = self.plotParameters[self.comboParameterToPlot.currentIndex()]
         plotWidget.setParameter(param)
+        plotWidget.plot()
 
-    def layerToPlotHasChanged(self):
+    def coverageToPlotHasChanged(self):
         txt = self.comboLayerToPlot.currentText()
         name, coverageName = txt.split(" : ")
+        bands = layers._layers[name][coverageName][0].bands()
         plotWidget.setLayer(name, coverageName)
+        self.plotParameters = plotparams.getParameters(bands)
+        self.comboParameterToPlot.clear()
+        self.comboParameterToPlot.addItems([str(p) for p in self.plotParameters])
 
 
 def setLayerRGB(layer, r, g, b):
@@ -250,8 +241,8 @@ class AddEndpointTreeItem(TreeItemWithLink):
                 item.addChild(subitem)
             layers._layers[connector.name()][coverageName] = timeLayers
             self.widget.comboLayerToPlot.addItem(connector.name() + " : " + coverageName)
+            self.widget.comboCoverageForRGB.addItem(connector.name() + " : " + coverageName)
             mosaicWidget.comboCoverage.addItem(connector.name() + " : " + coverageName)
-        self.widget.updateComboLayersSet()
         iface.mainWindow().statusBar().showMessage("")
 
 
@@ -270,22 +261,27 @@ class LayerTreeItem(QTreeWidgetItem):
             try:
                 layer = layerFromSource(source)
             except WrongLayerSourceException:
-                layer = self.layer.layer()
+                layer = execute(self.layer.layer)
                 if layer.isValid():
                     coverageName = self.layer.coverageName()
                     addLayerIntoGroup(layer, coverageName)
                     name = self.layer.datasetName()
                     try:
-                        count = layers._bandCount[name][coverageName]
                         r, g, b = layers._rendering[name][coverageName]
                         setLayerRGB(layer, r, g, b)
                     except KeyError, e:
-                        layers._bandCount[name][coverageName] = layer.bandCount()
-                        if layer.bandCount() > 2:
-                            layers._rendering[name][coverageName] = (0,1,2)
+                        bands = self.layer.bands()
+                        if len(bands) > 2:
+                            try:
+                                r = bands.index("red")
+                                g = bands.index("green")
+                                b = bands.index("blue")
+                            except ValueError:
+                                r, g, b = 0, 1, 2
+                            layers._rendering[name][coverageName] = (r,g,b)
+                            setLayerRGB(layer, r, g, b)
                         else:
                             layers._rendering[name][coverageName] = (0,0,0)
-                        self.widget.updateRGBFields(name, coverageName)
                     mosaicWidget.updateDates()
                 else:
                     iface.mainWindow().statusBar().showMessage("Invalid layer")

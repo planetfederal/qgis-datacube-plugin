@@ -14,7 +14,7 @@ def addLayerIntoGroup(layer, groupName):
     QgsMapLayerRegistry.instance().addMapLayer(layer, False)
     group.addLayer(layer)
 
-MINDATE = parser.parse("1800-01-01T00:00:00Z")
+MINDATE = parser.parse("1800-01-01T00:00:00")
 
 def daysFromDate(d):
     delta = d - MINDATE
