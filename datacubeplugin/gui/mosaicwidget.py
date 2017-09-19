@@ -13,7 +13,6 @@ from osgeo.gdalconst import GA_ReadOnly
 from datacubeplugin.gui.selectextentmaptool import SelectExtentMapTool
 from datacubeplugin.mosaicfunctions import mosaicFunctions
 from datacubeplugin.utils import addLayerIntoGroup, dateFromDays, daysFromDate
-from datacubeplugin.landsat import CFMASK_BAND
 from qgiscommons2.gui import execute
 
 

@@ -1,13 +1,17 @@
-from landsat import *
-
-from qgis.core import QgsRaster
+from qgis.core import QgsRaster, QgsRasterBlock
 
 def getBand(layer, pt, band, bands):
-
     try:
         idx = bands.index(band)
-        value = layer.dataProvider().identify(pt,
-            QgsRaster.IdentifyFormatValue).results().values()[idx]
+    except ValueError:
+        return None
+    try:
+        if isinstance(layer, list):
+            block = layer[idx]
+            value = block.value(pt.x(), pt.x())
+        else:
+            value = layer.dataProvider().identify(pt,
+                QgsRaster.IdentifyFormatValue).results().values()[idx]
         return value
     except:
         return None

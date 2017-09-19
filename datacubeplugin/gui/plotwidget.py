@@ -106,79 +106,88 @@ class PlotWidget(BASE, WIDGET):
         if not canvasLayers:
             return
 
-        if filter is None:
-            bands = allCoverageLayers[0].bands()
-            pts = []
-            if self.rectangle is not None:
-                lay = canvasLayers[0][0]
-                xsteps = int(self.rectangle.width() / lay.rasterUnitsPerPixelX())
-                xs = [self.rectangle.xMinimum() + i * lay.rasterUnitsPerPixelX() for i in range(xsteps)]
-                ysteps = int(self.rectangle.height() / lay.rasterUnitsPerPixelY())
-                ys = [self.rectangle.yMinimum() + i * lay.rasterUnitsPerPixelY() for i in range(ysteps)]
-                for x in xs:
-                    for y in ys:
-                        pts.append(QgsPoint(x, y))
-            elif self.pt is not None:
-                pts = [self.pt]
+        try:
+            if filter is None:
+                bands = allCoverageLayers[0].bands()
+                pts = []
+                if self.rectangle is not None:
+                    lay = canvasLayers[0][0]
+                    xsteps = int(self.rectangle.width() / lay.rasterUnitsPerPixelX())
+                    xs = [self.rectangle.xMinimum() + i * lay.rasterUnitsPerPixelX() for i in range(xsteps)]
+                    ysteps = int(self.rectangle.height() / lay.rasterUnitsPerPixelY())
+                    ys = [self.rectangle.yMinimum() + i * lay.rasterUnitsPerPixelY() for i in range(ysteps)]
+                    for x in xs:
+                        for y in ys:
+                            pts.append(QgsPoint(x, y))
+                elif self.pt is not None:
+                    pts = [self.pt]
 
-            if not pts:
-                return
+                if not pts:
+                    return
 
-            if len(pts) == 1:
-                self.data = {}
-                for layer, time in canvasLayers:
-                    v = self.parameter.value(layer, pts[0], bands)
-                    if v is not None:
+                if self.rectangle is None:
+                    self.data = {}
+                    for layer, time in canvasLayers:
+                        v = self.parameter.value(layer, self.pt, bands)
+                        if v is not None:
+                            time = parser.parse(time)
+                            self.data[time] = [(v, self.pt)]
+                    if not self.data:
+                        return
+                    y = [v[0][0] for v in self.data.values()]
+                    ymin = min(y)
+                    ymax = max(y)
+                else:
+                    self.data = {}
+                    for layer, time in canvasLayers:
+                        xsteps = int(self.rectangle.width() / lay.rasterUnitsPerPixelX())
+                        ysteps = int(self.rectangle.height() / lay.rasterUnitsPerPixelY())
+                        blocks = []
+                        for band in range(layer.bandCount()):
+                            blocks.append(layer.dataProvider().block(band + 1, self.rectangle, xsteps, ysteps))
                         time = parser.parse(time)
-                        self.data[time] = [(v, pts[0])]
-                if not self.data:
-                    return
-                y = [v[0][0] for v in self.data.values()]
-                ymin = min(y)
-                ymax = max(y)
-            else:
-                self.data = {}
-                for layer, time in canvasLayers:
-                    time = parser.parse(time)
-                    self.data[time] = []
-                    for pt in pts:
-                        vx = self.parameter.value(layer, pt, bands)
-                        if vx is not None:
-                            self.data[time].append((vx, pt))
-                if not self.data:
-                    return
-                y = [[v[0] for v in lis] for lis in self.data.values()]
-                ymin = min([min(v) for v in y])
-                ymax = max([max(v) for v in y])
+                        self.data[time] = []
+                        for col in range(xsteps):
+                            x = self.rectangle.xMinimum() + col * lay.rasterUnitsPerPixelX()
+                            for row in range(ysteps):
+                                y = self.rectangle.yMinimum() + row * lay.rasterUnitsPerPixelY()
+                                value = self.parameter.value(blocks, QgsPoint(col, row), bands)
+                                if value is not None:
+                                    self.data[time].append((value, QgsPoint(x, y)))
+                    if not self.data:
+                        return
+                    y = [[v[0] for v in lis] for lis in self.data.values()]
+                    ymin = min([min(v) for v in y])
+                    ymax = max([max(v) for v in y])
 
-            xmin = min(self.data.keys())
-            xmax = max(self.data.keys())
-            self.plotDataChanged.emit(xmin, xmax, ymin, ymax)
-            self.dataToPlot = copy.deepcopy(self.data)
-        else:
-            self.dataToPlot = copy.deepcopy(self.data)
+                xmin = min(self.data.keys())
+                xmax = max(self.data.keys())
+                self.plotDataChanged.emit(xmin, xmax, ymin, ymax)
+                self.dataToPlot = copy.deepcopy(self.data)
+            else:
+                self.dataToPlot = copy.deepcopy(self.data)
+                datesToRemove = []
+                for d in self.data.keys():
+                    if d < filter[0] or d > filter[1]:
+                        datesToRemove.append(d)
+                for d in datesToRemove:
+                    del self.dataToPlot[d]
+                for key, values in self.data.iteritems():
+                    for v in values[::-1]:
+                        if v[0] < filter[2] or v[0] > filter[3]:
+                            try:
+                                self.dataToPlot[key].remove(v)
+                            except:
+                                pass
+
             datesToRemove = []
-            for d in self.data.keys():
-                if d < filter[0] or d > filter[1]:
-                    datesToRemove.append(d)
+            for key, values in self.dataToPlot.iteritems():
+                if not values:
+                    datesToRemove.append(key)
             for d in datesToRemove:
                 del self.dataToPlot[d]
-            for key, values in self.data.iteritems():
-                for v in values[::-1]:
-                    if v[0] < filter[2] or v[0] > filter[3]:
-                        try:
-                            self.dataToPlot[key].remove(v)
-                        except:
-                            pass
 
-        datesToRemove = []
-        for key, values in self.dataToPlot.iteritems():
-            if not values:
-                datesToRemove.append(key)
-        for d in datesToRemove:
-            del self.dataToPlot[d]
 
-        try:
             axes = self.figure.add_subplot(1, 1, 1)
             x = matplotlib.dates.date2num(self.dataToPlot.keys())
             if self.rectangle is None:
