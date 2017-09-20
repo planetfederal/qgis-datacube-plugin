@@ -37,6 +37,7 @@ class PlotWidget(BASE, WIDGET):
         self.pt = None
         self.dataset = None
         self.coverage = None
+        self.parameter = None
         self.figure = Figure()
         self.canvas = FigureCanvas(self.figure)
         layout = QHBoxLayout()
@@ -69,6 +70,7 @@ class PlotWidget(BASE, WIDGET):
     def setLayer(self, dataset, coverage):
         self.dataset = dataset
         self.coverage = coverage
+        self.plot()
 
     def setParameter(self, parameter):
         self.parameter = parameter

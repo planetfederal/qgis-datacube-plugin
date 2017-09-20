@@ -157,16 +157,17 @@ class DataCubeWidget(BASE, WIDGET):
     def parameterToPlotHasChanged(self):
         param = self.plotParameters[self.comboParameterToPlot.currentIndex()]
         plotWidget.setParameter(param)
-        plotWidget.plot()
 
     def coverageToPlotHasChanged(self):
         txt = self.comboLayerToPlot.currentText()
         name, coverageName = txt.split(" : ")
         bands = layers._coverages[name][coverageName].bands
-        plotWidget.setLayer(name, coverageName)
         self.plotParameters = plotparams.getParameters(bands)
+        self.comboParameterToPlot.blockSignals(True)
         self.comboParameterToPlot.clear()
         self.comboParameterToPlot.addItems([str(p) for p in self.plotParameters])
+        self.comboParameterToPlot.blockSignals(False)
+        plotWidget.setLayer(name, coverageName)
 
 
 def setLayerRGB(layer, r, g, b):
