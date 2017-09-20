@@ -8,7 +8,7 @@ def getBand(layer, pt, band, bands):
     try:
         if isinstance(layer, list):
             block = layer[idx]
-            value = block.value(pt.x(), pt.x())
+            value = block.item(int(pt.y()), int(pt.x()))
         else:
             value = layer.dataProvider().identify(pt,
                 QgsRaster.IdentifyFormatValue).results().values()[idx]

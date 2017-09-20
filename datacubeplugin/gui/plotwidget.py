@@ -13,7 +13,7 @@ from matplotlib import axes
 from datacubeplugin import plotparams
 from datacubeplugin import layers
 from qgiscommons2.layers import layerFromSource, WrongLayerSourceException
-from qgiscommons2.gui import askForFiles, execute
+from qgiscommons2.gui import askForFiles, execute, startProgressBar, closeProgressBar, setProgressValue
 from dateutil import parser
 import csv
 from datetime import datetime
@@ -99,7 +99,7 @@ class PlotWidget(BASE, WIDGET):
             time = layerdef.time()
             try:
                 layer = layerFromSource(source)
-                canvasLayers.append((layer, time))
+                canvasLayers.append((layerdef, time))
             except WrongLayerSourceException:
                 pass
 
@@ -109,29 +109,18 @@ class PlotWidget(BASE, WIDGET):
         try:
             if filter is None:
                 bands = allCoverageLayers[0].bands()
-                pts = []
-                if self.rectangle is not None:
-                    lay = canvasLayers[0][0]
-                    xsteps = int(self.rectangle.width() / lay.rasterUnitsPerPixelX())
-                    xs = [self.rectangle.xMinimum() + i * lay.rasterUnitsPerPixelX() for i in range(xsteps)]
-                    ysteps = int(self.rectangle.height() / lay.rasterUnitsPerPixelY())
-                    ys = [self.rectangle.yMinimum() + i * lay.rasterUnitsPerPixelY() for i in range(ysteps)]
-                    for x in xs:
-                        for y in ys:
-                            pts.append(QgsPoint(x, y))
-                elif self.pt is not None:
-                    pts = [self.pt]
-
-                if not pts:
-                    return
 
                 if self.rectangle is None:
                     self.data = {}
-                    for layer, time in canvasLayers:
+                    startProgressBar("Retrieving plot data", len(canvasLayers))
+                    for (i, (layerdef, time)) in enumerate(canvasLayers):
+                        layer = layerdef.layer()
                         v = self.parameter.value(layer, self.pt, bands)
+                        setProgressValue(i + 1)
                         if v is not None:
                             time = parser.parse(time)
                             self.data[time] = [(v, self.pt)]
+                    closeProgressBar()
                     if not self.data:
                         return
                     y = [v[0][0] for v in self.data.values()]
@@ -139,21 +128,27 @@ class PlotWidget(BASE, WIDGET):
                     ymax = max(y)
                 else:
                     self.data = {}
-                    for layer, time in canvasLayers:
-                        xsteps = int(self.rectangle.width() / lay.rasterUnitsPerPixelX())
-                        ysteps = int(self.rectangle.height() / lay.rasterUnitsPerPixelY())
-                        blocks = []
-                        for band in range(layer.bandCount()):
-                            blocks.append(layer.dataProvider().block(band + 1, self.rectangle, xsteps, ysteps))
+                    startProgressBar("Retrieving plot data", len(canvasLayers))
+                    for (i, (layerdef, time)) in enumerate(canvasLayers):
+                        layer = layerdef.layer()
+                        xsteps = int(self.rectangle.width() / layer.rasterUnitsPerPixelX())
+                        ysteps = int(self.rectangle.height() / layer.rasterUnitsPerPixelY())
+                        filename = layerdef.layerFile(self.rectangle)
+                        roi = layers.getBandArrays(filename)#roi.dataProvider().block(band + 1, roi.extent(), roi.width(), roi.height()))
+                        setProgressValue(i + 1)
                         time = parser.parse(time)
                         self.data[time] = []
+                        print "dsasd %s" % str(xsteps)
                         for col in range(xsteps):
-                            x = self.rectangle.xMinimum() + col * lay.rasterUnitsPerPixelX()
+                            x = self.rectangle.xMinimum() + col * layer.rasterUnitsPerPixelX()
                             for row in range(ysteps):
-                                y = self.rectangle.yMinimum() + row * lay.rasterUnitsPerPixelY()
-                                value = self.parameter.value(blocks, QgsPoint(col, row), bands)
-                                if value is not None:
-                                    self.data[time].append((value, QgsPoint(x, y)))
+                                y = self.rectangle.yMinimum() + row * layer.rasterUnitsPerPixelY()
+                                pt = QgsPoint(x, y)
+                                pixel = QgsPoint(col, row)
+                                value = self.parameter.value(roi, pixel, bands)
+                                if value:
+                                    self.data[time].append((value, pt))
+                    closeProgressBar()
                     if not self.data:
                         return
                     y = [[v[0] for v in lis] for lis in self.data.values()]
@@ -200,6 +195,7 @@ class PlotWidget(BASE, WIDGET):
 
             self.figure.autofmt_xdate()
         except:
+            raise
             return
 
         self.buttonSave.setEnabled(True)

@@ -162,7 +162,7 @@ class DataCubeWidget(BASE, WIDGET):
     def coverageToPlotHasChanged(self):
         txt = self.comboLayerToPlot.currentText()
         name, coverageName = txt.split(" : ")
-        bands = layers._layers[name][coverageName][0].bands()
+        bands = layers._coverages[name][coverageName].bands
         plotWidget.setLayer(name, coverageName)
         self.plotParameters = plotparams.getParameters(bands)
         self.comboParameterToPlot.clear()
@@ -222,6 +222,7 @@ class AddEndpointTreeItem(TreeItemWithLink):
         if connector is None:
             return
         layers._layers[connector.name()] = {}
+        layers._coverages[connector.name()] = {}
         coverages = connector.coverages()
         if coverages:
             endpointItem = QTreeWidgetItem()
@@ -240,6 +241,7 @@ class AddEndpointTreeItem(TreeItemWithLink):
                 subitem = LayerTreeItem(layer, self.widget)
                 item.addChild(subitem)
             layers._layers[connector.name()][coverageName] = timeLayers
+            layers._coverages[connector.name()][coverageName] = coverage
             self.widget.comboLayerToPlot.addItem(connector.name() + " : " + coverageName)
             self.widget.comboCoverageForRGB.addItem(connector.name() + " : " + coverageName)
             mosaicWidget.comboCoverage.addItem(connector.name() + " : " + coverageName)

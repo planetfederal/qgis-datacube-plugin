@@ -13,6 +13,7 @@ from osgeo.gdalconst import GA_ReadOnly
 from datacubeplugin.gui.selectextentmaptool import SelectExtentMapTool
 from datacubeplugin.mosaicfunctions import mosaicFunctions
 from datacubeplugin.utils import addLayerIntoGroup, dateFromDays, daysFromDate
+from datacubeplugin.layers import getRowArray
 from qgiscommons2.gui import execute
 
 
@@ -138,7 +139,7 @@ class MosaicWidget(BASE, WIDGET):
             for band in range(bandCount):
                 rows = []
                 for row in range(height):
-                    bandData = [self.getArray(lay.layerFile(extent), band + 1, row, width) for lay in validLayers]
+                    bandData = [getRowArray(lay.layerFile(extent), band + 1, row, width) for lay in validLayers]
                     rows.append(mosaicFunction.compute(bandData, times))
                     bandData = None
                 newBand = np.vstack(rows)
@@ -161,13 +162,6 @@ class MosaicWidget(BASE, WIDGET):
             layer = QgsRasterLayer(dstFilename, "Mosaic [%s]" % mosaicFunction.name, "gdal")
             addLayerIntoGroup(layer, validLayers[0].coverageName())
 
-    def getArray(self, filename, bandidx, row, width):
-        ds = gdal.Open(filename, GA_ReadOnly)
-        band = ds.GetRasterBand(bandidx)
-        array = band.ReadAsArray(0, row, width, 1)
-        nodataband = ds.GetRasterBand(1)#CFMASK_BAND)
-        nodataarray = nodataband.ReadAsArray(0, row, width, 1)
-        return (array, nodataarray)
 
 
 mosaicWidget = MosaicWidget(iface.mainWindow())

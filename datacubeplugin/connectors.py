@@ -75,6 +75,7 @@ class WCSLayer(Layer):
         Layer.__init__(self)
         self.coverage = coverage
         self._time = time
+        self._layer = None
 
     def source(self):
         uri = uriFromComponents(self.coverage.url, self.coverage.coverageName, self.time())
@@ -95,8 +96,11 @@ class WCSLayer(Layer):
     def coverageName(self):
         return self.coverage.coverageName
 
+
     def layer(self):
-        return QgsRasterLayer(self.source(), self.name(), "wcs")
+        if self._layer is None:
+            self._layer = QgsRasterLayer(self.source(), self.name(), "wcs")
+        return self._layer
 
 
 class FileConnector():
