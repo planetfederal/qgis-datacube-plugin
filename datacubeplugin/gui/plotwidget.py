@@ -138,7 +138,6 @@ class PlotWidget(BASE, WIDGET):
                         setProgressValue(i + 1)
                         time = parser.parse(time)
                         self.data[time] = []
-                        print "dsasd %s" % str(xsteps)
                         for col in range(xsteps):
                             x = self.rectangle.xMinimum() + col * layer.rasterUnitsPerPixelX()
                             for row in range(ysteps):
