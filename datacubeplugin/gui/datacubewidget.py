@@ -159,7 +159,6 @@ class DataCubeWidget(BASE, WIDGET):
         plotWidget.plot(parameter=param)
 
     def coverageToPlotHasChanged(self):
-        print 0
         txt = self.comboCoverageToPlot.currentText()
         name, coverageName = txt.split(" : ")
         bands = layers._coverages[name][coverageName].bands

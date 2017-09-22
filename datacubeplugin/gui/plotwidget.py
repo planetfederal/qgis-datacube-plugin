@@ -130,7 +130,7 @@ class PlotWidget(BASE, WIDGET):
                         xsteps = int(self.rectangle.width() / layer.rasterUnitsPerPixelX())
                         ysteps = int(self.rectangle.height() / layer.rasterUnitsPerPixelY())
                         filename = layerdef.layerFile(self.rectangle)
-                        roi = layers.getBandArrays(filename)#roi.dataProvider().block(band + 1, roi.extent(), roi.width(), roi.height()))
+                        roi = layers.getBandArrays(filename)
                         setProgressValue(i + 1)
                         time = parser.parse(time)
                         self.data[time] = []
