@@ -15,7 +15,7 @@ from datacubeplugin.mosaicfunctions import mosaicFunctions
 from datacubeplugin.utils import addLayerIntoGroup, dateFromDays, daysFromDate
 from datacubeplugin.layers import getRowArray
 from qgiscommons2.gui import execute
-
+from collections import defaultdict
 
 pluginPath = os.path.dirname(os.path.dirname(__file__))
 WIDGET, BASE = uic.loadUiType(
@@ -117,11 +117,11 @@ class MosaicWidget(BASE, WIDGET):
         extent = QgsRectangle(QgsPoint(xmin, ymin), QgsPoint(xmax, ymax))
         txt = self.comboCoverage.currentText()
         name, coverageName = txt.split(" : ")
-        layers = self._loadedLayersForCoverage(name, coverageName)
+        loadedLayers = self._loadedLayersForCoverage(name, coverageName)
         minDays = self.sliderStartDate.value()
         maxDays = self.sliderEndDate.value()
         validLayers = []
-        for layer in layers:
+        for layer in loadedLayers:
             time = daysFromDate(parser.parse(layer.time()))
             if (time >= minDays and time <= maxDays):
                 validLayers.append(layer)
@@ -135,25 +135,31 @@ class MosaicWidget(BASE, WIDGET):
             geotransform = ds.GetGeoTransform()
             projection = ds.GetProjection()
             newBands = []
-            times = [lay.time() for lay in validLayers]
-            for band in range(bandCount):
-                rows = []
-                for row in range(height):
+            bandNames = layers._coverages[name][coverageName].bands
+            newBands = defaultdict(list)
+            try:
+                qaBand = bandNames.index("pixel_qa")
+            except:
+                qaBand = None
+            for row in range(height):
+                if qaBand is not None:
+                    qaData = [getRowArray(lay.layerFile(extent), qaBand, row, width) for lay in validLayers]
+                else:
+                    qaData = None
+                for band, bandName in enumerate(bandNames):
                     bandData = [getRowArray(lay.layerFile(extent), band + 1, row, width) for lay in validLayers]
-                    rows.append(mosaicFunction.compute(bandData, times))
+                    newBands[bandName].append(mosaicFunction.compute(bandData, qaData))
                     bandData = None
-                newBand = np.vstack(rows)
-                newBands.append(newBand)
-
             driver = gdal.GetDriverByName("GTiff")
             dstFilename = tempFilename("tif")
             dstDs= driver.Create(dstFilename, width, height, bandCount, datatype)
 
-            for i, band in enumerate(newBands):
+            for i, band in enumerate(bandNames):
                 gdalBand = dstDs.GetRasterBand(i+1)
-                gdalBand.WriteArray(band)
+                newBand = np.vstack(newBands[band])
+                gdalBand.WriteArray(newBand)
                 gdalBand.FlushCache()
-                del band
+                del newBand
 
             dstDs.SetGeoTransform(geotransform)
             dstDs.SetProjection(projection)

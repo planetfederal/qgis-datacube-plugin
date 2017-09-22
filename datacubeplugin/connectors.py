@@ -4,6 +4,7 @@ from qgiscommons2.files import tempFilename
 import owslib.wcs as wcs
 import os
 from dateutil import parser
+import json
 
 class Layer():
 
@@ -61,6 +62,7 @@ class WCSCoverage():
         self.coverageName = coverageName
         self._timepositions = [s.replace("Z", "") for s in coverage.timepositions]
         self.bands = coverage.axisDescriptions[0].values
+        print self.bands
         self.crs = coverage.supportedCRS[0]
 
     def timePositions(self):
@@ -81,9 +83,6 @@ class WCSLayer(Layer):
         uri = uriFromComponents(self.coverage.url, self.coverage.coverageName, self.time())
         return str(uri.encodedUri())
 
-    def bands(self):
-        return self.coverage.bands
-
     def name(self):
         return self.time()
 
@@ -96,6 +95,8 @@ class WCSLayer(Layer):
     def coverageName(self):
         return self.coverage.coverageName
 
+    def bands(self):
+        return self.coverage.bands
 
     def layer(self):
         if self._layer is None:
@@ -110,7 +111,7 @@ class FileConnector():
         self._coverages = {}
         for f in os.listdir(folder):
             path = os.path.join(folder, f)
-            if os.path.isdir(path):
+            if os.path.isdir(path) and os.path.exists(os.path.join(path, 'bands.json')):
                 self._coverages[f] = FileCoverage(path)
 
     def coverages(self):
@@ -132,6 +133,8 @@ class FileCoverage():
     def __init__(self, folder):
         self.folder = folder
         self._timepositions = []
+        with open(os.path.join(folder, 'bands.json')) as f:
+            self.bands = json.load(f)
         self._exts = {}
         for f in os.listdir(folder):
             path = os.path.join(folder, f)
@@ -148,22 +151,22 @@ class FileCoverage():
         return self._timepositions
 
     def layerForTimePosition(self, time):
-        return FileLayer(self.folder, time  + self._exts[time])
+        return FileLayer(self.folder, time  + self._exts[time], self)
 
 class FileLayer(Layer):
 
-    def __init__(self, folder, filename):
+    def __init__(self, folder, filename, coverage):
         Layer.__init__(self)
         self.folder = folder
         self._time = os.path.splitext(filename)[0].replace("_", ":").replace("Z", "")
         self._filename = filename
-        self._bands = ["Band 1"]
+        self.coverage = coverage
 
     def source(self):
         return os.path.join(self.folder, self._filename)
 
     def bands(self):
-        return self._bands
+        return self.coverage.bands
 
     def name(self):
         return self.time()

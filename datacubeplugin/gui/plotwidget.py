@@ -67,20 +67,13 @@ class PlotWidget(BASE, WIDGET):
         self.rectangle = None
         self.plot()
 
-    def setLayer(self, dataset, coverage):
-        self.dataset = dataset
-        self.coverage = coverage
-        self.plot()
-
-    def setParameter(self, parameter):
-        self.parameter = parameter
-        self.plot()
-
-    def plot(self, filter=None):
+    def plot(self, filter=None, parameter=None, coverage=None, dataset=None):
+        self.parameter = parameter or self.parameter
+        self.coverage = coverage or self.coverage
+        self.dataset = dataset or self.dataset
         execute(lambda: self._plot(filter))
 
     def _plot(self, filter=None):
-
         self.figure.clear()
         self.canvas.draw()
         self.buttonSave.setEnabled(False)
@@ -106,6 +99,7 @@ class PlotWidget(BASE, WIDGET):
                 pass
 
         if not canvasLayers:
+            print 3
             return
 
         try:

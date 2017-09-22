@@ -19,9 +19,7 @@ def getRowArray(filename, bandidx, row, width):
     ds = gdal.Open(filename, GA_ReadOnly)
     band = ds.GetRasterBand(bandidx)
     array = band.ReadAsArray(0, row, width, 1)
-    nodataband = ds.GetRasterBand(1)#CFMASK_BAND)
-    nodataarray = nodataband.ReadAsArray(0, row, width, 1)
-    return (array, nodataarray)
+    return array
 
 def getArray(filename, bandidx):
     ds = gdal.Open(filename, GA_ReadOnly)

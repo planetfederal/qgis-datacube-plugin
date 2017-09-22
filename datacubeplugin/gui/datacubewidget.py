@@ -44,7 +44,7 @@ class DataCubeWidget(BASE, WIDGET):
         self.selectPointButton.clicked.connect(self.togglePointMapTool)
         self.selectRegionButton.clicked.connect(self.toggleRegionMapTool)
 
-        self.comboLayerToPlot.currentIndexChanged.connect(self.coverageToPlotHasChanged)
+        self.comboCoverageToPlot.currentIndexChanged.connect(self.coverageToPlotHasChanged)
         self.comboParameterToPlot.currentIndexChanged.connect(self.parameterToPlotHasChanged)
 
         iface.mapCanvas().mapToolSet.connect(self.unsetTool)
@@ -156,10 +156,11 @@ class DataCubeWidget(BASE, WIDGET):
 
     def parameterToPlotHasChanged(self):
         param = self.plotParameters[self.comboParameterToPlot.currentIndex()]
-        plotWidget.setParameter(param)
+        plotWidget.plot(parameter=param)
 
     def coverageToPlotHasChanged(self):
-        txt = self.comboLayerToPlot.currentText()
+        print 0
+        txt = self.comboCoverageToPlot.currentText()
         name, coverageName = txt.split(" : ")
         bands = layers._coverages[name][coverageName].bands
         self.plotParameters = plotparams.getParameters(bands)
@@ -167,7 +168,7 @@ class DataCubeWidget(BASE, WIDGET):
         self.comboParameterToPlot.clear()
         self.comboParameterToPlot.addItems([str(p) for p in self.plotParameters])
         self.comboParameterToPlot.blockSignals(False)
-        plotWidget.setLayer(name, coverageName)
+        plotWidget.plot(dataset=name, coverage=coverageName, parameter=self.plotParameters[0])
 
 
 def setLayerRGB(layer, r, g, b):
@@ -243,7 +244,7 @@ class AddEndpointTreeItem(TreeItemWithLink):
                 item.addChild(subitem)
             layers._layers[connector.name()][coverageName] = timeLayers
             layers._coverages[connector.name()][coverageName] = coverage
-            self.widget.comboLayerToPlot.addItem(connector.name() + " : " + coverageName)
+            self.widget.comboCoverageToPlot.addItem(connector.name() + " : " + coverageName)
             self.widget.comboCoverageForRGB.addItem(connector.name() + " : " + coverageName)
             mosaicWidget.comboCoverage.addItem(connector.name() + " : " + coverageName)
         iface.mainWindow().statusBar().showMessage("")
