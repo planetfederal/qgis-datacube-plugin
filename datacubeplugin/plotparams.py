@@ -50,7 +50,7 @@ class PlotParameter():
 
     def checkMask(self, layer, pt, bands):
         v = getPixelQA(layer, pt, bands)
-        return v is None or v not in [2, 4, 255]
+        return v is None or v not in [66, 68, 130, 132]
 
 class BandValue(PlotParameter):
 
