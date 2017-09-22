@@ -129,126 +129,102 @@ class WOFS(PlotParameter):
         if None in [band1, band2, band3, band4, band5, band7]:
             return None
 
-        # Compute normalized ratio indices
         ndi_52 = _bandRatio(band5, band2)
         ndi_43 = _bandRatio(band4, band3)
         ndi_72 = _bandRatio(band7, band2)
 
-        # Start with the tree's left branch, finishing nodes as needed
-
-        # Left branch
         r1 = ndi_52 <= -0.01
-
         r2 = band1 <= 2083.5
-
-        if r1 and not r2:
-            return 0 #Node 3
-
-        classified[r1 & ~r2] = 0
-
         r3 = band7 <= 323.5
-        _tmp = r1 & r2
-        _tmp2 = _tmp & r3
-        _tmp &= ~r3
-
         r4 = ndi_43 <= 0.61
-        classified[_tmp2 & r4] = 1  #Node 6
-        classified[_tmp2 & ~r4] = 0  #Node 7
-
         r5 = band1 <= 1400.5
-        _tmp2 = _tmp & ~r5
-
         r6 = ndi_43 <= -0.01
-        classified[_tmp2 & r6] = 1  #Node 10
-        classified[_tmp2 & ~r6] = 0  #Node 11
-
-        _tmp &= r5
-
         r7 = ndi_72 <= -0.23
-        _tmp2 = _tmp & ~r7
-
         r8 = band1 <= 379
-        classified[_tmp2 & r8] = 1  #Node 14
-        classified[_tmp2 & ~r8] = 0  #Node 15
-
-        _tmp &= r7
-
         r9 = ndi_43 <= 0.22
-        classified[_tmp & r9] = 1  #Node 17
-        _tmp &= ~r9
-
         r10 = band1 <= 473
-        classified[_tmp & r10] = 1  #Node 19
-        classified[_tmp & ~r10] = 0  #Node 20
-
-        # Left branch complete; cleanup
-        del r2, r3, r4, r5, r6, r7, r8, r9, r10
-        gc.collect()
-
-        # Right branch of regression tree
-        r1 = ~r1
-
         r11 = ndi_52 <= 0.23
-        _tmp = r1 & r11
-
         r12 = band1 <= 334.5
-        _tmp2 = _tmp & ~r12
-        classified[_tmp2] = 0  #Node 23
-
-        _tmp &= r12
-
         r13 = ndi_43 <= 0.54
-        _tmp2 = _tmp & ~r13
-        classified[_tmp2] = 0  #Node 25
-
-        _tmp &= r13
-
         r14 = ndi_52 <= 0.12
-        _tmp2 = _tmp & r14
-        classified[_tmp2] = 1  #Node 27
-
-        _tmp &= ~r14
-
         r15 = band3 <= 364.5
-        _tmp2 = _tmp & r15
-
         r16 = band1 <= 129.5
-        classified[_tmp2 & r16] = 1  #Node 31
-        classified[_tmp2 & ~r16] = 0  #Node 32
-
-        _tmp &= ~r15
-
         r17 = band1 <= 300.5
-        _tmp2 = _tmp & ~r17
-        _tmp &= r17
-        classified[_tmp] = 1  #Node 33
-        classified[_tmp2] = 0  #Node 34
-
-        _tmp = r1 & ~r11
-
         r18 = ndi_52 <= 0.34
-        classified[_tmp & ~r18] = 0  #Node 36
-        _tmp &= r18
-
         r19 = band1 <= 249.5
-        classified[_tmp & ~r19] = 0  #Node 38
-        _tmp &= r19
-
         r20 = ndi_43 <= 0.45
-        classified[_tmp & ~r20] = 0  #Node 40
-        _tmp &= r20
-
         r21 = band3 <= 364.5
-        classified[_tmp & ~r21] = 0  #Node 42
-        _tmp &= r21
-
         r22 = band1 <= 129.5
-        classified[_tmp & r22] = 1  #Node 44
-        classified[_tmp & ~r22] = 0  #Node 45
 
-        # Completed regression tree
+        if r1:
+            if not r2:
+                return 0 #Node 3
+            else:
+                if r3:
+                    if r4:
+                        return 1  #Node 6
+                    else:
+                        return 0  #Node 7
+                else:
+                    if not r5:
+                        if r6:
+                            return  1  #Node 10
+                        else:
+                            return 0  #Node 11
+                    else:
+                        if r7:
+                            if r9:
+                                return 1  #Node 17
+                            else:
+                                if r10:
+                                    return 1  #Node 19
+                                else:
+                                    return 0  #Node 20
+                        else:
+                            if r8:
+                                return 1  #Node 14
+                            else:
+                                return 0  #Node 15
+        else:
+            if r11:
+                if r12:
+                    if r13:
+                        if r14:
+                            return 1 #Node 27
+                        else:
+                            if r15:
+                                if r16:
+                                    return 1  #Node 31
+                                else:
+                                    return 0  #Node 32
+                            else:
+                                if r17:
+                                    return 1  #Node 33
+                                else:
+                                    return 0  #Node 34
+                    else:
+                        return 0  #Node 25
+                else:
+                    return 0  #Node 23
+            else:
+                if r18:
+                    if r19:
+                        if r20:
+                            if r21:
+                                if r22:
+                                    return 1 #Node 44
+                                else:
+                                    return 0 #Node 45
+                            else:
+                                return 0  #Node 42
+                        else:
+                            return 0  #Node 40
+                    else:
+                        return 0  #Node 38
+                else:
+                    return 0  #Node 36
 
-        return classified
+
 
 class TSM(PlotParameter):
 
