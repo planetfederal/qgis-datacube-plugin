@@ -3,18 +3,21 @@ import numpy as np
 class MosaicFunction():
 
     def compute(self, values, qa):
-        resultRow = []
-        for x in xrange(values[0].shape[1]):
-            validValues = []
-            for idx, tpos in enumerate(values):
-                v = tpos.item(0, x)
-                valid = True
-                if qa is not None:
-                    valid = self.checkMask(qa[idx].item(1, x))
-                if valid:
-                    validValues.append(v)
-            resultRow.append(self._compute(validValues))
-        return np.array(resultRow)
+        resultRows = []
+        for y in xrange(values[0].shape[0]):
+            resultRow = []
+            for x in xrange(values[0].shape[1]):
+                validValues = []
+                for idx, tpos in enumerate(values):
+                    v = tpos.item(y, x)
+                    valid = True
+                    if qa is not None:
+                        valid = self.checkMask(qa[idx].item(y, x))
+                    if valid:
+                        validValues.append(v)
+                resultRow.append(self._compute(validValues))
+            resultRows.append(resultRow)
+        return np.array(resultRows)
 
     def checkMask(self, v):
         return v is None or v not in [2, 4, 255]

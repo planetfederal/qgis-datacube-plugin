@@ -6,16 +6,16 @@ from qgis.utils import iface
 from qgis.PyQt import uic
 from datacubeplugin import layers
 from qgiscommons2.layers import layerFromSource, WrongLayerSourceException
-from qgiscommons2.files import tempFilename
+from qgiscommons2.files import tempFilename, tempFolderInTempFolder
 from dateutil import parser
 from osgeo import gdal
 from osgeo.gdalconst import GA_ReadOnly
 from datacubeplugin.gui.selectextentmaptool import SelectExtentMapTool
 from datacubeplugin.mosaicfunctions import mosaicFunctions
 from datacubeplugin.utils import addLayerIntoGroup, dateFromDays, daysFromDate
-from datacubeplugin.layers import getRowArray
-from qgiscommons2.gui import execute
-from collections import defaultdict
+from datacubeplugin.layers import getArray
+from qgiscommons2.gui import execute, startProgressBar, closeProgressBar, setProgressValue
+import processing
 
 pluginPath = os.path.dirname(os.path.dirname(__file__))
 WIDGET, BASE = uic.loadUiType(
@@ -95,8 +95,6 @@ class MosaicWidget(BASE, WIDGET):
 
     def createMosaic(self):
         execute(self._createMosaic)
-        iface.messageBar().pushMessage("", "Mosaic has been correctly created and added to project.",
-                                               level=QgsMessageBar.INFO)
 
     def _createMosaic(self):
         mosaicFunction = mosaicFunctions[self.comboMosaicType.currentIndex()]
@@ -127,48 +125,76 @@ class MosaicWidget(BASE, WIDGET):
                 validLayers.append(layer)
 
         if validLayers:
-            ds = gdal.Open(validLayers[0].layerFile(extent), GA_ReadOnly)
-            datatype = ds.GetRasterBand(1).DataType
-            bandCount = ds.RasterCount
-            width = ds.RasterXSize
-            height = ds.RasterYSize
-            geotransform = ds.GetGeoTransform()
-            projection = ds.GetProjection()
             newBands = []
             bandNames = layers._coverages[name][coverageName].bands
-            newBands = defaultdict(list)
+            tilesFolders = []
+            dstFolder = tempFolderInTempFolder()
+            startProgressBar("Retrieving and preparing data", len(validLayers))
+            for i, lay in enumerate(validLayers):
+                setProgressValue(i)
+                tilesFolders.append(lay.saveTiles(extent))
+            closeProgressBar()
             try:
                 qaBand = bandNames.index("pixel_qa")
             except:
                 qaBand = None
-            for row in range(height):
+            tileFiles = os.listdir(tilesFolders[0])
+            startProgressBar("Processing mosaic data", len(tileFiles))
+            for i, filename in enumerate(tileFiles):
+                setProgressValue(i)
+                newBands = {}
+                files = [os.path.join(folder, filename) for folder in tilesFolders]
                 if qaBand is not None:
-                    qaData = [getRowArray(lay.layerFile(extent), qaBand, row, width) for lay in validLayers]
+                    qaData = [getArray(f, qaBand) for f in files]
                 else:
                     qaData = None
                 for band, bandName in enumerate(bandNames):
-                    bandData = [getRowArray(lay.layerFile(extent), band + 1, row, width) for lay in validLayers]
-                    newBands[bandName].append(mosaicFunction.compute(bandData, qaData))
+                    bandData = [getArray(f, band + 1) for f in files]
+                    newBands[bandName] = mosaicFunction.compute(bandData, qaData)
                     bandData = None
-            driver = gdal.GetDriverByName("GTiff")
-            dstFilename = tempFilename("tif")
-            dstDs= driver.Create(dstFilename, width, height, bandCount, datatype)
 
-            for i, band in enumerate(bandNames):
-                gdalBand = dstDs.GetRasterBand(i+1)
-                newBand = np.vstack(newBands[band])
-                gdalBand.WriteArray(newBand)
-                gdalBand.FlushCache()
-                del newBand
 
-            dstDs.SetGeoTransform(geotransform)
-            dstDs.SetProjection(projection)
-            del dstDs
+                templateFilename = os.path.join(tilesFolders[0], filename)
+                ds = gdal.Open(templateFilename, GA_ReadOnly)
+                bandCount = ds.RasterCount
+                datatype = ds.GetRasterBand(1).DataType
+                width = ds.RasterXSize
+                height = ds.RasterYSize
+                geotransform = ds.GetGeoTransform()
+                projection = ds.GetProjection()
+                del ds
 
-            layer = QgsRasterLayer(dstFilename, "Mosaic [%s]" % mosaicFunction.name, "gdal")
+                driver = gdal.GetDriverByName("GTiff")
+                dstFilename = os.path.join(dstFolder, filename)
+                dstDs= driver.Create(dstFilename, width, height, bandCount, datatype)
+
+                for i, band in enumerate(bandNames):
+                    gdalBand = dstDs.GetRasterBand(i+1)
+                    gdalBand.WriteArray(newBands[band])
+                    gdalBand.FlushCache()
+                del newBands
+
+                dstDs.SetGeoTransform(geotransform)
+                dstDs.SetProjection(projection)
+
+                del dstDs
+
+            print dstFolder
+
+            toMerge = ";".join([os.path.join(dstFolder, f) for f in tileFiles])
+            outputFile = os.path.join(dstFolder, "mosaic.vrt")
+            processing.runalg("gdalogr:buildvirtualraster", {"INPUT":toMerge, "SEPARATE":False, "OUTPUT":outputFile})
+
+            layer = QgsRasterLayer(outputFile, "Mosaic [%s]" % mosaicFunction.name, "gdal")
             addLayerIntoGroup(layer, validLayers[0].coverageName())
 
+            closeProgressBar()
 
+            iface.messageBar().pushMessage("", "Mosaic has been correctly created and added to project.",
+                                               level=QgsMessageBar.INFO)
+        else:
+            iface.messageBar().pushMessage("", "No layers available from the selected coverage.",
+                                               level=QgsMessageBar.WARNING)
 
 mosaicWidget = MosaicWidget(iface.mainWindow())
 

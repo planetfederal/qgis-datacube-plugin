@@ -8,7 +8,7 @@ from qgis.PyQt.QtWidgets import QTreeWidgetItem, QLabel, QHBoxLayout, QWidget
 from qgis.PyQt.QtGui import QSizePolicy
 from qgis.PyQt.QtCore import Qt
 from qgiscommons2.layers import layerFromSource, WrongLayerSourceException
-from qgiscommons2.gui import execute
+from qgiscommons2.gui import execute, askForFolder
 
 from endpointselectiondialog import EndpointSelectionDialog
 
@@ -19,6 +19,7 @@ from datacubeplugin.gui.plotwidget import plotWidget
 from datacubeplugin.gui.mosaicwidget import mosaicWidget
 from datacubeplugin import plotparams
 from datacubeplugin.utils import addLayerIntoGroup, dateFromDays, daysFromDate
+
 
 pluginPath = os.path.dirname(os.path.dirname(__file__))
 WIDGET, BASE = uic.loadUiType(
@@ -230,10 +231,10 @@ class AddEndpointTreeItem(TreeItemWithLink):
             endpointItem.setText(0, connector.name())
             self.tree.addTopLevelItem(endpointItem)
         for coverageName in coverages:
-            item = QTreeWidgetItem()
-            item.setText(0, coverageName)
-            endpointItem.addChild(item)
+            #item.setText(0, coverageName)
+            #endpointItem.addChild(item)
             coverage = connector.coverage(coverageName)
+            item = CoverageItem(endpointItem, self.tree, coverage)
             timepositions = coverage.timePositions()
             timeLayers = []
             for time in timepositions:
@@ -248,6 +249,19 @@ class AddEndpointTreeItem(TreeItemWithLink):
             mosaicWidget.comboCoverage.addItem(connector.name() + " : " + coverageName)
         iface.mainWindow().statusBar().showMessage("")
 
+class CoverageItem(TreeItemWithLink):
+
+    def __init__(self, parent, tree, coverage):
+        TreeItemWithLink.__init__(self, parent, tree, coverage.name(), "Download")
+        self.coverage = coverage
+
+    def linkClicked(self):
+        folder = askForFolder(self.tree, "Folder for local storage")
+        if folder:
+            timepositions = self.coverage.timePositions()
+            for time in timepositions:
+                layer = self.coverage.layerForTimePosition(time)
+                layer.saveTo(folder)
 
 class LayerTreeItem(QTreeWidgetItem):
 

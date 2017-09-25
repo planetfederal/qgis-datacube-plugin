@@ -119,12 +119,12 @@ class WOFS(PlotParameter):
         def _bandRatio(a, b):
             return (a - b) / (a + b)
 
-        band1 = self.getB(layer, pt, bands)
-        band2 = self.getG(layer, pt, bands)
-        band3 = self.getR(layer, pt, bands)
-        band4 = self.getNIR(layer, pt, bands)
-        band5 = self.getSWIR1(layer, pt, bands)
-        band7 = self.getSWIR2(layer, pt, bands)
+        band1 = getB(layer, pt, bands)
+        band2 = getG(layer, pt, bands)
+        band3 = getR(layer, pt, bands)
+        band4 = getNIR(layer, pt, bands)
+        band5 = getSWIR1(layer, pt, bands)
+        band7 = getSWIR2(layer, pt, bands)
 
         if None in [band1, band2, band3, band4, band5, band7]:
             return None

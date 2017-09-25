@@ -1,10 +1,11 @@
-from qgis.core import QgsRasterLayer, QgsRasterFileWriter, QgsRasterPipe
+from qgis.core import QgsRasterLayer, QgsRasterFileWriter, QgsRasterPipe, QgsPoint, QgsRectangle
 from datacubeplugin.layers import uriFromComponents
-from qgiscommons2.files import tempFilename
+from qgiscommons2.files import tempFilename, tempFolderInTempFolder
 import owslib.wcs as wcs
 import os
 from dateutil import parser
 import json
+import math
 
 class Layer():
 
@@ -16,16 +17,48 @@ class Layer():
             return self._files[extent]
         else:
             filename = tempFilename("tif")
-            filewriter = QgsRasterFileWriter(filename)
-            pipe = QgsRasterPipe()
-            layer = self.layer()
-            provider = layer.dataProvider()
-            xSize = extent.width() / layer.rasterUnitsPerPixelX()
-            ySize = extent.width() / layer.rasterUnitsPerPixelY()
-            pipe.set(provider.clone())
-            filewriter.writeRaster(pipe, xSize, ySize, extent, provider.crs())
+            self._save(filename, extent)
             self._files[extent] = filename
             return filename
+
+    def _save(self, filename, extent=None):
+        filewriter = QgsRasterFileWriter(filename)
+        pipe = QgsRasterPipe()
+        layer = self.layer()
+        provider = layer.dataProvider()
+        extent = extent or layer.extent()
+        xSize = extent.width() / layer.rasterUnitsPerPixelX()
+        ySize = extent.height() / layer.rasterUnitsPerPixelY()
+        pipe.set(provider.clone())
+        filewriter.writeRaster(pipe, xSize, ySize, extent, provider.crs())
+
+    def saveTo(self, folder):
+        filename = os.path.join(folder, self.name.replace(":", "_"))
+        self._save(filename)
+
+    TILESIZE = 256
+    def saveTiles(self, extent):
+        folder = tempFolderInTempFolder()
+        layer = self.layer()
+        xSize = extent.width() / layer.rasterUnitsPerPixelX()
+        ySize = extent.height() / layer.rasterUnitsPerPixelY()
+        xTiles = math.ceil(xSize / self.TILESIZE)
+        yTiles = math.ceil(ySize / self.TILESIZE)
+        i = 0
+        for x in xrange(xTiles):
+            for y in xrange(yTiles):
+                minX = extent.xMinimum() + x * layer.rasterUnitsPerPixelX() * self.TILESIZE
+                maxX = min(extent.xMaximum(), extent.xMinimum() + (x + 1) * layer.rasterUnitsPerPixelX() * self.TILESIZE)
+                minY = extent.yMinimum() + y * layer.rasterUnitsPerPixelY() * self.TILESIZE
+                maxY = min(extent.yMaximum(), extent.yMinimum() + (y + 1) * layer.rasterUnitsPerPixelY() * self.TILESIZE)
+                pt1 = QgsPoint(minX, minY)
+                pt2 = QgsPoint(maxX, maxY)
+                tileExtent = QgsRectangle(pt1, pt2)
+                filename = os.path.join(folder, "%i_%i.tif" % (x, y))
+                self._save(filename, tileExtent)
+                i += 1
+                print i
+        return folder
 
 class WCSConnector():
 
@@ -65,6 +98,9 @@ class WCSCoverage():
         print self.bands
         self.crs = coverage.supportedCRS[0]
 
+    def name(self):
+        return self.coverageName
+
     def timePositions(self):
         return self._timepositions
 
@@ -80,7 +116,7 @@ class WCSLayer(Layer):
         self._layer = None
 
     def source(self):
-        uri = uriFromComponents(self.coverage.url, self.coverage.coverageName, self.time())
+        uri = uriFromComponents(self.coverage.url, self.coverage.name(), self.time())
         return str(uri.encodedUri())
 
     def name(self):
@@ -93,7 +129,7 @@ class WCSLayer(Layer):
         return self.coverage.url
 
     def coverageName(self):
-        return self.coverage.coverageName
+        return self.coverage.name()
 
     def bands(self):
         return self.coverage.bands
@@ -146,6 +182,9 @@ class FileCoverage():
                     self._timepositions.append(root)
                 except ValueError:
                     pass
+
+    def name(self):
+        return os.path.basename(self.folder)
 
     def timePositions(self):
         return self._timepositions

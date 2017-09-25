@@ -190,7 +190,6 @@ class PlotWidget(BASE, WIDGET):
 
             self.figure.autofmt_xdate()
         except:
-            raise
             return
 
         self.buttonSave.setEnabled(True)
