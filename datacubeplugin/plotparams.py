@@ -1,4 +1,6 @@
 from qgis.core import QgsRaster, QgsRasterBlock
+import numpy as np
+import os
 
 def getBand(layer, pt, band, bands):
     try:
@@ -231,28 +233,105 @@ class TSM(PlotParameter):
     name = "TSM"
 
     def _value(self, layer, pt, bands):
-        pass
+        g = getG(layer, pt, bands)
+        r = getR(layer, pt, bands)
+        if r is None or g is None:
+            return None
+        tsmi = (r + g) * 0.0001 / 2
+        tsm = 3983 * tsmi**1.6246
+        return tsm
+
+csvFilepath = os.path.join(os.path.dirname(__file__), 'data', 'endmembers_landsat.csv')
+
+_endMembers = np.loadtxt(csvFilepath, delimiter=',')  # Creates a 64 x 3 matrix
+
+def fractionalCover(layer, pt, bands):
+
+    b = getB(layer, pt, bands)
+    g = getG(layer, pt, bands)
+    r = getR(layer, pt, bands)
+    nir = getNIR(layer, pt, bands)
+    swir1 = getSWIR1(layer, pt, bands)
+    swir2 = getSWIR2(layer, pt, bands)
+
+    if None in [r, g, b, nir, swir1, swir2]:
+        return None
+
+    endMembers = np.copy(_endMembers)
+
+    band_stack = np.array([[b], [g], [r],[nir],[swir1][swir2]]).transpose()
+
+    for band in range(6):
+        band_stack = np.hstack((band_stack, np.expand_dims(np.log(band_stack[:, band]), axis=1)))
+    for band in range(6):
+        band_stack = np.hstack(
+            (band_stack, np.expand_dims(np.multiply(band_stack[:, band], band_stack[:, band + 6]), axis=1)))
+    for band in range(6):
+        for b2 in range(band + 1, 6):
+            band_stack = np.hstack(
+                (band_stack, np.expand_dims(np.multiply(band_stack[:, band], band_stack[:, b2]), axis=1)))
+    for band in range(6):
+        for b2 in range(band + 1, 6):
+            band_stack = np.hstack(
+                (band_stack, np.expand_dims(np.multiply(band_stack[:, band + 6], band_stack[:, b2 + 6]), axis=1)))
+    for band in range(6):
+        for b2 in range(band + 1, 6):
+            band_stack = np.hstack((band_stack, np.expand_dims(
+                np.divide(band_stack[:, b2] - band_stack[:, band], band_stack[:, b2] + band_stack[:, band]), axis=1)))
+
+    band_stack = np.nan_to_num(band_stack)  # Now a n x 63 matrix (assuming one acquisition)
+
+    ones = np.ones(band_stack.shape[0])
+    ones = ones.reshape(ones.shape[0], 1)
+    band_stack = np.concatenate((band_stack, ones), axis=1)  # Now a n x 64 matrix (assuming one acquisition)
+
+    SumToOneWeight = 0.02
+    ones = np.ones(endMembers.shape[1]) * SumToOneWeight
+    ones = ones.reshape(1, endMembers.shape[1])
+    end_members = np.concatenate((endMembers, ones), axis=0).astype(np.float32)
+
+    result = np.zeros((band_stack.shape[0], end_members.shape[1]), dtype=np.float32)  # Creates an n x 3 matrix
+
+    for i in range(band_stack.shape[0]):
+        result[i, :] = (opt.nnls(end_members, band_stack[i, :])[0].clip(0, 2.54) * 100).astype(np.int16)
+
+    pv = result[:, :, 0]
+    npv = result[:, :, 1]
+    bs = result[:, :, 2]
+
+    return bs, pv, npv
+
+
 
 class BS(PlotParameter):
 
     name = "BS"
 
     def _value(self, layer, pt, bands):
-        pass
+        fc = fractionalCover(layer, pt, bands)
+        if fc is None:
+            return None
+        return fc[0]
 
 class PV(PlotParameter):
 
     name = "PV"
 
     def _value(self, layer, pt, bands):
-        pass
+        fc = fractionalCover(layer, pt, bands)
+        if fc is None:
+            return None
+        return fc[1]
 
 class NPV(PlotParameter):
 
     name = "NPV"
 
     def _value(self, layer, pt, bands):
-        pass
+        fc = fractionalCover(layer, pt, bands)
+        if fc is None:
+            return None
+        return fc[2]
 
 def getParameters(bands):
     parameters = [BandValue(b) for b in bands]
