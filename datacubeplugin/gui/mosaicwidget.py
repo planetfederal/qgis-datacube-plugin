@@ -93,6 +93,9 @@ class MosaicWidget(BASE, WIDGET):
             self.sliderEndDate.setMaximum(maxDays)
             self.sliderEndDate.setValue(maxDays)
 
+    def _tileDownloaded(self, i):
+        setProgressValue(i)
+
     def createMosaic(self):
         execute(self._createMosaic)
 
@@ -124,22 +127,21 @@ class MosaicWidget(BASE, WIDGET):
             if (time >= minDays and time <= maxDays):
                 validLayers.append(layer)
 
+        bandNames = layers._coverages[name][coverageName].bands
         if validLayers:
             newBands = []
-            bandNames = layers._coverages[name][coverageName].bands
             tilesFolders = []
             dstFolder = tempFolderInTempFolder()
-            startProgressBar("Retrieving and preparing data", len(validLayers))
+            '''We download the layers so we can access them locally'''
             for i, lay in enumerate(validLayers):
-                setProgressValue(i)
                 tilesFolders.append(lay.saveTiles(extent))
-            closeProgressBar()
             try:
                 qaBand = bandNames.index("pixel_qa")
             except:
                 qaBand = None
             tileFiles = os.listdir(tilesFolders[0])
             startProgressBar("Processing mosaic data", len(tileFiles))
+            '''Now we process all tiles separately'''
             for i, filename in enumerate(tileFiles):
                 setProgressValue(i)
                 newBands = {}
@@ -148,12 +150,17 @@ class MosaicWidget(BASE, WIDGET):
                     qaData = [getArray(f, qaBand) for f in files]
                 else:
                     qaData = None
+                '''
+                We operate band by band, since a given band in the the final result
+                layer depends only on the values of that band in the input layers,
+                not the valu of other bands'''
                 for band, bandName in enumerate(bandNames):
                     bandData = [getArray(f, band + 1) for f in files]
                     newBands[bandName] = mosaicFunction.compute(bandData, qaData)
                     bandData = None
 
 
+                '''We write the set of bands as a new layer. That will be an output tile'''
                 templateFilename = os.path.join(tilesFolders[0], filename)
                 ds = gdal.Open(templateFilename, GA_ReadOnly)
                 bandCount = ds.RasterCount
@@ -179,14 +186,13 @@ class MosaicWidget(BASE, WIDGET):
 
                 del dstDs
 
-            print dstFolder
-
+            '''With all the tiles, we create a virtual raster'''
             toMerge = ";".join([os.path.join(dstFolder, f) for f in tileFiles])
             outputFile = os.path.join(dstFolder, "mosaic.vrt")
             processing.runalg("gdalogr:buildvirtualraster", {"INPUT":toMerge, "SEPARATE":False, "OUTPUT":outputFile})
 
             layer = QgsRasterLayer(outputFile, "Mosaic [%s]" % mosaicFunction.name, "gdal")
-            addLayerIntoGroup(layer, validLayers[0].coverageName())
+            addLayerIntoGroup(layer, validLayers[0].datasetName(), validLayers[0].coverageName(), bandNames)
 
             closeProgressBar()
 

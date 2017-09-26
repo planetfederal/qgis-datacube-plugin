@@ -18,8 +18,7 @@ from datacubeplugin.connectors import connectors
 from datacubeplugin.gui.plotwidget import plotWidget
 from datacubeplugin.gui.mosaicwidget import mosaicWidget
 from datacubeplugin import plotparams
-from datacubeplugin.utils import addLayerIntoGroup, dateFromDays, daysFromDate
-
+from datacubeplugin.utils import addLayerIntoGroup, dateFromDays, daysFromDate, setLayerRGB
 
 pluginPath = os.path.dirname(os.path.dirname(__file__))
 WIDGET, BASE = uic.loadUiType(
@@ -171,12 +170,6 @@ class DataCubeWidget(BASE, WIDGET):
         plotWidget.plot(dataset=name, coverage=coverageName, parameter=self.plotParameters[0])
 
 
-def setLayerRGB(layer, r, g, b):
-    renderer = QgsMultiBandColorRenderer(layer.dataProvider(), r + 1, g + 1, b + 1)
-    layer.setRenderer(renderer)
-    layer.triggerRepaint()
-    iface.legendInterface().refreshLayerSymbology(layer)
-
 class TreeItemWithLink(QTreeWidgetItem):
 
     def __init__(self, parent, tree, text, linkText):
@@ -280,24 +273,8 @@ class LayerTreeItem(QTreeWidgetItem):
                 layer = execute(self.layer.layer)
                 if layer.isValid():
                     coverageName = self.layer.coverageName()
-                    addLayerIntoGroup(layer, coverageName)
                     name = self.layer.datasetName()
-                    try:
-                        r, g, b = layers._rendering[name][coverageName]
-                        setLayerRGB(layer, r, g, b)
-                    except KeyError, e:
-                        bands = self.layer.bands()
-                        if len(bands) > 2:
-                            try:
-                                r = bands.index("red")
-                                g = bands.index("green")
-                                b = bands.index("blue")
-                            except ValueError:
-                                r, g, b = 0, 1, 2
-                            layers._rendering[name][coverageName] = (r,g,b)
-                            setLayerRGB(layer, r, g, b)
-                        else:
-                            layers._rendering[name][coverageName] = (0,0,0)
+                    addLayerIntoGroup(layer, name, coverageName, self.layer.bands())
                     mosaicWidget.updateDates()
                 else:
                     iface.mainWindow().statusBar().showMessage("Invalid layer")

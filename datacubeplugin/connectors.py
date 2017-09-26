@@ -1,11 +1,13 @@
 from qgis.core import QgsRasterLayer, QgsRasterFileWriter, QgsRasterPipe, QgsPoint, QgsRectangle
 from datacubeplugin.layers import uriFromComponents
 from qgiscommons2.files import tempFilename, tempFolderInTempFolder
+from qgiscommons2.gui import startProgressBar, closeProgressBar, setProgressValue
 import owslib.wcs as wcs
 import os
 from dateutil import parser
 import json
 import math
+from qgis.PyQt.QtCore import pyqtSignal, QObject
 
 class Layer():
 
@@ -45,6 +47,7 @@ class Layer():
         xTiles = math.ceil(xSize / self.TILESIZE)
         yTiles = math.ceil(ySize / self.TILESIZE)
         i = 0
+        startProgressBar("Retrieving and preparing data [layer %s]" % self.name(), xTiles * yTiles)
         for x in xrange(xTiles):
             for y in xrange(yTiles):
                 minX = extent.xMinimum() + x * layer.rasterUnitsPerPixelX() * self.TILESIZE
@@ -57,8 +60,17 @@ class Layer():
                 filename = os.path.join(folder, "%i_%i.tif" % (x, y))
                 self._save(filename, tileExtent)
                 i += 1
-                print i
+                setProgressValue(i)
+        closeProgressBar()
         return folder
+
+    def tilesCount(self, extent):
+        layer = self.layer()
+        xSize = extent.width() / layer.rasterUnitsPerPixelX()
+        ySize = extent.height() / layer.rasterUnitsPerPixelY()
+        xTiles = math.ceil(xSize / self.TILESIZE)
+        yTiles = math.ceil(ySize / self.TILESIZE)
+        return xTiles * yTiles
 
 class WCSConnector():
 

@@ -99,7 +99,6 @@ class PlotWidget(BASE, WIDGET):
                 pass
 
         if not canvasLayers:
-            print 3
             return
 
         try:
