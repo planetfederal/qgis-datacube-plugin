@@ -107,7 +107,6 @@ class WCSCoverage():
         self.coverageName = coverageName
         self._timepositions = [s.replace("Z", "") for s in coverage.timepositions]
         self.bands = coverage.axisDescriptions[0].values
-        print self.bands
         self.crs = coverage.supportedCRS[0]
 
     def name(self):
@@ -192,7 +191,7 @@ class FileCoverage():
                     dt = parser.parse(root.replace("_", ":"))
                     self._exts[root] = ext
                     self._timepositions.append(root)
-                except ValueError:
+                except:
                     pass
 
     def name(self):

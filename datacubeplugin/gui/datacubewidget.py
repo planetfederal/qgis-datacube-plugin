@@ -142,7 +142,15 @@ class DataCubeWidget(BASE, WIDGET):
         try:
             r, g, b = layers._rendering[name][coverageName]
         except KeyError:
-            r, g, b = (0, 1, 2)
+            if len(bands) > 2:
+                try:
+                    r = bands.index("red")
+                    g = bands.index("green")
+                    b = bands.index("blue")
+                except ValueError:
+                    r, g, b = 0, 1, 2
+            else:
+                r = g = b = 0
 
         self.comboR.clear()
         self.comboR.addItems(bands)

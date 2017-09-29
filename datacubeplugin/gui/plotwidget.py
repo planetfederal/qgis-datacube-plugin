@@ -54,8 +54,8 @@ class PlotWidget(BASE, WIDGET):
                 writer = csv.writer(csvfile, quoting=csv.QUOTE_MINIMAL)
                 for time, values in self.data.iteritems():
                     for v in values:
-                        pt = v[1]
-                        writer.writerow([time, pt.x(), pt.y(), v[0]])
+                        x,y = v[1]
+                        writer.writerow([time, x, y, v[0]])
 
     def setRectangle(self, rect):
         self.rectangle = rect
@@ -114,7 +114,7 @@ class PlotWidget(BASE, WIDGET):
                         setProgressValue(i + 1)
                         if v is not None:
                             time = parser.parse(time)
-                            self.data[time] = [(v, self.pt)]
+                            self.data[time] = [(v, (self.pt.x(), self.pt.y()))]
                     closeProgressBar()
                     if not self.data:
                         return
@@ -141,7 +141,7 @@ class PlotWidget(BASE, WIDGET):
                                 pixel = QgsPoint(col, row)
                                 value = self.parameter.value(roi, pixel, bands)
                                 if value:
-                                    self.data[time].append((value, pt))
+                                    self.data[time].append((value, (x, y)))
                     closeProgressBar()
                     if not self.data:
                         return
@@ -167,6 +167,7 @@ class PlotWidget(BASE, WIDGET):
                             try:
                                 self.dataToPlot[key].remove(v)
                             except:
+                                raise
                                 pass
 
             datesToRemove = []
@@ -189,6 +190,7 @@ class PlotWidget(BASE, WIDGET):
 
             self.figure.autofmt_xdate()
         except:
+            raise
             return
 
         self.buttonSave.setEnabled(True)
