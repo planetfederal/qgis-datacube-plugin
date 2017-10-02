@@ -51,6 +51,7 @@ class PlotParameter():
             return None
 
     def checkMask(self, layer, pt, bands):
+        return True
         v = getPixelQA(layer, pt, bands)
         return v is None or v not in [66, 68, 130, 132]
 
@@ -70,9 +71,10 @@ class NDVI(PlotParameter):
     def _value(self, layer, pt, bands):
         r = getR(layer, pt, bands)
         nir = getNIR(layer, pt, bands)
+        print r, nir
         if nir is None or r is None:
             return None
-        return (r - nir)/ (r + nir)
+        return float(r - nir)/ float(r + nir)
 
 class EVI(PlotParameter):
 
@@ -241,9 +243,9 @@ class TSM(PlotParameter):
         tsm = 3983 * tsmi**1.6246
         return tsm
 
-csvFilepath = os.path.join(os.path.dirname(__file__), 'data', 'endmembers_landsat.csv')
+#csvFilepath = os.path.join(os.path.dirname(__file__), 'data', 'endmembers_landsat.csv')
 
-_endMembers = np.loadtxt(csvFilepath, delimiter=',')  # Creates a 64 x 3 matrix
+#_endMembers = np.loadtxt(csvFilepath, delimiter=',')  # Creates a 64 x 3 matrix
 
 def fractionalCover(layer, pt, bands):
 

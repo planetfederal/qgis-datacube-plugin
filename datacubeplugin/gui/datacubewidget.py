@@ -58,11 +58,14 @@ class DataCubeWidget(BASE, WIDGET):
 
         plotWidget.plotDataChanged.connect(self.plotDataChanged)
 
+    def fromSliderValue(self, v):
+        return v * (self.yAbsoluteMax - self.yAbsoluteMin) / self.SLIDER_MAX +  self.yAbsoluteMin
+    
     def plotDataFilterChanged(self):
         xmin = dateFromDays(self.sliderStartDate.value())
         xmax = dateFromDays(self.sliderEndDate.value())
-        ymin = self.sliderMinY.value()
-        ymax = self.sliderMaxY.value()
+        ymin = self.fromSliderValue(self.sliderMinY.value())
+        ymax = self.fromSliderValue(self.sliderMaxY.value())
         self.txtStartDate.setText(str(xmin).split(" ")[0])
         self.txtEndDate.setText(str(xmax).split(" ")[0])
         self.txtMinY.setText(str(ymin))
@@ -70,18 +73,21 @@ class DataCubeWidget(BASE, WIDGET):
         _filter = [xmin, xmax, ymin, ymax]
         plotWidget.plot(_filter)
 
+    SLIDER_MAX = 1000
     def plotDataChanged(self, xmin, xmax, ymin, ymax):
         widgets = [self.sliderMinY, self.sliderMaxY, self.sliderStartDate, self.sliderEndDate]
 
         for w in widgets:
             w.blockSignals(True)
 
-        self.sliderMinY.setMinimum(ymin)
-        self.sliderMaxY.setMinimum(ymin)
-        self.sliderMinY.setMaximum(ymax)
-        self.sliderMaxY.setMaximum(ymax)
-        self.sliderMaxY.setValue(ymax)
-        self.sliderMinY.setValue(ymin)
+        self.yAbsoluteMin = ymin
+        self.yAbsoluteMax = ymax
+        self.sliderMinY.setMinimum(0)
+        self.sliderMaxY.setMinimum(0)
+        self.sliderMinY.setMaximum(self.SLIDER_MAX)
+        self.sliderMaxY.setMaximum(self.SLIDER_MAX)
+        self.sliderMaxY.setValue(self.SLIDER_MAX)
+        self.sliderMinY.setValue(0)
 
         self.sliderStartDate.setMinimum(daysFromDate(xmin) - 1)
         self.sliderEndDate.setMinimum(daysFromDate(xmin) - 1)
