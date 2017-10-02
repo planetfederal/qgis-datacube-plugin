@@ -55,7 +55,7 @@ class DataCubePlugin:
         self.mosaicAction.setText("Mosaic tool")
         self.iface.addPluginToMenu("Data Cube Plugin", self.mosaicAction)
 
-        addSettingsMenu("Data Cube Plugin")
+        #addSettingsMenu("Data Cube Plugin")
         addHelpMenu("Data Cube Plugin")
         addAboutMenu("Data Cube Plugin")
 
@@ -76,7 +76,7 @@ class DataCubePlugin:
 
         self.iface.removePluginWebMenu("Data Cube Plugin", self.dataCubeAction)
         self.iface.removePluginWebMenu("Data Cube Plugin", self.mosaicAction)
-        removeSettingsMenu("Data Cube Plugin")
+        #removeSettingsMenu("Data Cube Plugin")
         removeAboutMenu("Data Cube Plugin")
         removeHelpMenu("Data Cube Plugin")
 
