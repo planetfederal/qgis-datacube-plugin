@@ -168,7 +168,7 @@ class FileConnector():
         return self._coverages[name]
 
     def name(self):
-        return self.folder
+        return "[...]/" + os.path.basename(self.folder)
 
     @staticmethod
     def isCompatible(endpoint):
