@@ -167,7 +167,6 @@ class PlotWidget(BASE, WIDGET):
                             try:
                                 self.dataToPlot[key].remove(v)
                             except:
-                                raise
                                 pass
 
             datesToRemove = []
@@ -190,7 +189,6 @@ class PlotWidget(BASE, WIDGET):
 
             self.figure.autofmt_xdate()
         except:
-            raise
             return
 
         self.buttonSave.setEnabled(True)
