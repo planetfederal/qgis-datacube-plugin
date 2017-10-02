@@ -42,7 +42,7 @@ def functionalTests():
     renderingTest = Test("Rendering test")
     renderingTest.addStep("Copy folder path", copyDatacubeFolder)
     renderingTest.addStep("Add data source to plugin main panel. Datacube URL has been copied to the clipboard")
-    renderingTest.addStep("Add one layers from the ls7 coverage")
+    renderingTest.addStep("Add one layer from the ls7 coverage")
     renderingTest.addStep("Modify the rendering of the ls7 coverage so r=green, g=blue, b=nir. Click on apply and verify the rendering changes",
                      isVerifyStep = True) 
     renderingTest.addStep("Add the remaining layer from the ls7 coverage and verify in its properties that it uses bands 2, 3 and 4 for the rendering",
@@ -51,8 +51,24 @@ def functionalTests():
     wrongEndpointTest = Test("Rendering test")
     wrongEndpointTest.addStep("Add wrong source to plugin main panel, entering 'wrong' in the endpoint dialog. Verify that a warning message is shown")
 
+    mosaicParametersTest = Test("Mosaic parameters test")
+    mosaicParametersTest.addStep("Copy folder path", copyDatacubeFolder)
+    mosaicParametersTest.addStep("Add data source to plugin main panel. Datacube URL has been copied to the clipboard")
+    mosaicParametersTest.addStep("Open the mosaic panel and try to create a mosaic. Verify it complains that extent is not configured",
+                          isVerifyStep = True) 
+    mosaicParametersTest.addStep("Fill the extent values clicking on 'Canvas extent'. Try to create a mosaic. Verify it complains that there are no coverages.",
+                          isVerifyStep = True) 
+    mosaicParametersTest.addStep("Add one layer from the ls7 coverage and then remove it from the QGIS project. Try to create the mosaic and verify a warning is shown",
+                          isVerifyStep = True) 
+    
 
-    return [plotTest, renderingTest, wrongEndpointTest]
+    mosaicTest = Test("Mosaic parameters test")
+    mosaicTest.addStep("Copy folder path", copyDatacubeFolder)
+    mosaicTest.addStep("Add data source to plugin main panel. Datacube URL has been copied to the clipboard")
+    mosaicTest.addStep("Add one layer from the ls7 coverage")
+    mosaicTest.addStep("Open the mosaic panel. Click on 'Select on canvas'. Click and drag on the canvas to define a extent. Click on 'Create mosaic'. Verify the mosaic is created and added")
+
+    return [plotTest, renderingTest, wrongEndpointTest, mosaicTest, mosaicParametersTest]
 
 
 class DataCubePluginTest(unittest.TestCase):

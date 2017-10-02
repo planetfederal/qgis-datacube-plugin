@@ -1,6 +1,7 @@
 import os
 
 from qgis.core import *
+from qgis.gui import QgsMessageBar
 
 from qgis.utils import iface
 from qgis.PyQt import uic
@@ -228,6 +229,9 @@ class AddEndpointTreeItem(TreeItemWithLink):
                 connector = c(endpoint)
                 break
         if connector is None:
+            iface.messageBar().pushMessage("", "Could not add coverages from the provided endpoint.",
+                                               level=QgsMessageBar.WARNING)
+            iface.mainWindow().statusBar().showMessage("")
             return
         layers._layers[connector.name()] = {}
         layers._coverages[connector.name()] = {}
