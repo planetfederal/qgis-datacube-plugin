@@ -48,8 +48,11 @@ def functionalTests():
     renderingTest.addStep("Add the remaining layer from the ls7 coverage and verify in its properties that it uses bands 2, 3 and 4 for the rendering",
                      isVerifyStep = True) 
 
+    wrongEndpointTest = Test("Rendering test")
+    wrongEndpointTest.addStep("Add wrong source to plugin main panel, entering 'wrong' in the endpoint dialog. Verify that a warning message is shown")
 
-    return [plotTest, renderingTest]
+
+    return [plotTest, renderingTest, wrongEndpointTest]
 
 
 class DataCubePluginTest(unittest.TestCase):
