@@ -2,6 +2,21 @@ import numpy as np
 
 class MosaicFunction():
 
+    def computeQAMask(self, qas):
+        resultRows = []
+        for y in xrange(qas[0].shape[0]):
+            resultRow = []
+            for x in xrange(qas[0].shape[1]):
+                res  = 255
+                for qa in qas:
+                    valid = self.checkMask(qa.item(y, x))
+                    if valid:
+                        res = 1
+                        break
+                resultRow.append(res)
+            resultRows.append(resultRow)
+        return np.array(resultRows)
+    
     def compute(self, values, qa):
         resultRows = []
         for y in xrange(values[0].shape[0]):
@@ -20,6 +35,7 @@ class MosaicFunction():
         return np.array(resultRows)
 
     def checkMask(self, v):
+        return True
         return v is None or v not in [2, 4, 255]
 
 
@@ -51,4 +67,4 @@ class GeoMedian(MosaicFunction):
     def _compute(self, values):
         return np.median(values)
 
-mosaicFunctions = [MostRecent(), LeastRecent()]
+mosaicFunctions = [MostRecent(), LeastRecent(), Median()]
