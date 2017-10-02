@@ -117,6 +117,10 @@ class MosaicWidget(BASE, WIDGET):
             return
         extent = QgsRectangle(QgsPoint(xmin, ymin), QgsPoint(xmax, ymax))
         txt = self.comboCoverage.currentText()
+        if not txt:
+            iface.messageBar().pushMessage("", "No coverage selected",
+                                               level=QgsMessageBar.WARNING)
+            return
         name, coverageName = txt.split(" : ")
         loadedLayers = self._loadedLayersForCoverage(name, coverageName)
         minDays = self.sliderStartDate.value()
@@ -155,9 +159,12 @@ class MosaicWidget(BASE, WIDGET):
                 layer depends only on the values of that band in the input layers,
                 not the valu of other bands'''
                 for band, bandName in enumerate(bandNames):
-                    bandData = [getArray(f, band + 1) for f in files]
-                    newBands[bandName] = mosaicFunction.compute(bandData, qaData)
-                    bandData = None
+                    if band == qaBand:
+                        newBands[bandName] = mosaicFunction.computeQAMask(qaData)
+                    else:
+                        bandData = [getArray(f, band + 1) for f in files]
+                        newBands[bandName] = mosaicFunction.compute(bandData, qaData)
+                        bandData = None
 
 
                 '''We write the set of bands as a new layer. That will be an output tile'''
