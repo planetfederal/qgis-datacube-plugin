@@ -39,9 +39,17 @@ def functionalTests():
     plotTest.addStep("Change the coverage to plot and verify that the plot panel is cleared", isVerifyStep=True)
     plotTest.addStep("Change back the coverage to plot and verify that the plot panel shows a plot again", isVerifyStep=True)
 
+    renderingTest = Test("Rendering test")
+    renderingTest.addStep("Copy folder path", copyDatacubeFolder)
+    renderingTest.addStep("Add data source to plugin main panel. Datacube URL has been copied to the clipboard")
+    renderingTest.addStep("Add one layers from the ls7 coverage")
+    renderingTest.addStep("Modify the rendering of the ls7 coverage so r=green, g=blue, b=nir. Click on apply and verify the rendering changes",
+                     isVerifyStep = True) 
+    renderingTest.addStep("Add the remaining layer from the ls7 coverage and verify in its properties that it uses bands 2, 3 and 4 for the rendering",
+                     isVerifyStep = True) 
 
 
-    return [plotTest]
+    return [plotTest, renderingTest]
 
 
 class DataCubePluginTest(unittest.TestCase):
