@@ -71,7 +71,6 @@ class NDVI(PlotParameter):
     def _value(self, layer, pt, bands):
         r = getR(layer, pt, bands)
         nir = getNIR(layer, pt, bands)
-        print r, nir
         if nir is None or r is None:
             return None
         return float(r - nir)/ float(r + nir)
@@ -90,7 +89,7 @@ class EVI(PlotParameter):
         b = getB(layer, pt, bands)
         if nir is None or r is None or b is None:
             return None
-        return G * (nir- r)/ (nir + C1 * r - C2 + b + L)
+        return G * float(nir- r)/ float(nir + C1 * r - C2 + b + L)
 
 class NDWI(PlotParameter):
 
@@ -101,7 +100,7 @@ class NDWI(PlotParameter):
         g = getG(layer, pt, bands)
         if nir is None or g is None:
             return None
-        return (g - nir)/ (g + nir)
+        return float(g - nir)/ float(g + nir)
 
 class NDBI(PlotParameter):
 
@@ -112,7 +111,7 @@ class NDBI(PlotParameter):
         swir = getSWIR1(layer, pt, bands)
         if nir is None or swir is None:
             return None
-        return (nir - swir)/ (nir + swir)
+        return float(nir - swir)/ float(nir + swir)
 
 class WOFS(PlotParameter):
 
@@ -121,7 +120,7 @@ class WOFS(PlotParameter):
     def _value(self, layer, pt, bands):
 
         def _bandRatio(a, b):
-            return (a - b) / (a + b)
+            return float(a - b) / float(a + b)
 
         band1 = getB(layer, pt, bands)
         band2 = getG(layer, pt, bands)
