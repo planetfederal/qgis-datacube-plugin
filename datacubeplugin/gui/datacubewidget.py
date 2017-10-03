@@ -216,6 +216,7 @@ class AddEndpointTreeItem(TreeItemWithLink):
         self.widget = widget
 
     def linkClicked(self):
+        from endpointselectiondialog import EndpointSelectionDialog
         dialog = EndpointSelectionDialog()
         dialog.exec_()
         if dialog.url is not None:
