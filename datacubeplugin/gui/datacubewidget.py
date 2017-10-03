@@ -33,6 +33,9 @@ class DataCubeWidget(BASE, WIDGET):
         self.setupUi(self)
 
         self.plotParameters = []
+        
+        self.yAbsoluteMin = 0
+        self.yAbsoluteMax = 1
 
         AddEndpointTreeItem(self.treeWidget.invisibleRootItem(),
                                 self.treeWidget, self)
