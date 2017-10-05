@@ -126,17 +126,20 @@ class PlotWidget(BASE, WIDGET):
                     startProgressBar("Retrieving plot data", len(canvasLayers))
                     for (i, (layerdef, time)) in enumerate(canvasLayers):
                         layer = layerdef.layer()
-                        xsteps = int(self.rectangle.width() / layer.rasterUnitsPerPixelX())
-                        ysteps = int(self.rectangle.height() / layer.rasterUnitsPerPixelY())
-                        filename = layerdef.layerFile(self.rectangle)
+                        if not self.rectangle.intersects(layer.extent()):
+                            continue
+                        rectangle = self.rectangle.intersect(layer.extent())
+                        xsteps = int(rectangle.width() / layer.rasterUnitsPerPixelX())
+                        ysteps = int(rectangle.height() / layer.rasterUnitsPerPixelY())
+                        filename = layerdef.layerFile(rectangle)
                         roi = layers.getBandArrays(filename)
                         setProgressValue(i + 1)
                         time = parser.parse(time)
                         self.data[time] = []
                         for col in range(xsteps):
-                            x = self.rectangle.xMinimum() + col * layer.rasterUnitsPerPixelX()
+                            x = rectangle.xMinimum() + col * layer.rasterUnitsPerPixelX()
                             for row in range(ysteps):
-                                y = self.rectangle.yMinimum() + row * layer.rasterUnitsPerPixelY()
+                                y = rectangle.yMinimum() + row * layer.rasterUnitsPerPixelY()
                                 pt = QgsPoint(x, y)
                                 pixel = QgsPoint(col, row)
                                 value = self.parameter.value(roi, pixel, bands)
@@ -183,9 +186,10 @@ class PlotWidget(BASE, WIDGET):
                 y = [v[0][0] for v in self.dataToPlot.values() if v]
                 axes.plot_date(x,y)
             else:
-                y = [[v[0] for v in lis] for lis in self.dataToPlot.values()]
+                sortedKeys = sorted(self.dataToPlot.keys())
+                y = [[v[0] for v in self.dataToPlot[k]] for k in sortedKeys]
                 axes.boxplot(y, positions = x)
-                axes.set_xticklabels([str(d).split(" ")[0] for d in self.dataToPlot.keys()], rotation=45)
+                axes.set_xticklabels([str(d).split(" ")[0] for d in sortedKeys], rotation=45)
 
             self.figure.autofmt_xdate()
         except:

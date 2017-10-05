@@ -39,29 +39,32 @@ class Layer():
         self._save(filename)
 
     TILESIZE = 256
-    def saveTiles(self, extent):
+    def saveTiles(self, _extent):
+        
         folder = tempFolderInTempFolder()
         layer = self.layer()
-        xSize = extent.width() / layer.rasterUnitsPerPixelX()
-        ySize = extent.height() / layer.rasterUnitsPerPixelY()
-        xTiles = math.ceil(xSize / self.TILESIZE)
-        yTiles = math.ceil(ySize / self.TILESIZE)
-        i = 0
-        startProgressBar("Retrieving and preparing data [layer %s]" % self.name(), xTiles * yTiles)
-        for x in xrange(xTiles):
-            for y in xrange(yTiles):
-                minX = extent.xMinimum() + x * layer.rasterUnitsPerPixelX() * self.TILESIZE
-                maxX = min(extent.xMaximum(), extent.xMinimum() + (x + 1) * layer.rasterUnitsPerPixelX() * self.TILESIZE)
-                minY = extent.yMinimum() + y * layer.rasterUnitsPerPixelY() * self.TILESIZE
-                maxY = min(extent.yMaximum(), extent.yMinimum() + (y + 1) * layer.rasterUnitsPerPixelY() * self.TILESIZE)
-                pt1 = QgsPoint(minX, minY)
-                pt2 = QgsPoint(maxX, maxY)
-                tileExtent = QgsRectangle(pt1, pt2)
-                filename = os.path.join(folder, "%i_%i.tif" % (x, y))
-                self._save(filename, tileExtent)
-                i += 1
-                setProgressValue(i)
-        closeProgressBar()
+        if _extent.intersects(layer.extent()):
+            extent = _extent.intersect(layer.extent())
+            xSize = extent.width() / layer.rasterUnitsPerPixelX()
+            ySize = extent.height() / layer.rasterUnitsPerPixelY()
+            xTiles = math.ceil(xSize / self.TILESIZE)
+            yTiles = math.ceil(ySize / self.TILESIZE)
+            i = 0
+            startProgressBar("Retrieving and preparing data [layer %s]" % self.name(), xTiles * yTiles)
+            for x in xrange(xTiles):
+                for y in xrange(yTiles):
+                    minX = extent.xMinimum() + x * layer.rasterUnitsPerPixelX() * self.TILESIZE
+                    maxX = min(extent.xMaximum(), extent.xMinimum() + (x + 1) * layer.rasterUnitsPerPixelX() * self.TILESIZE)
+                    minY = extent.yMinimum() + y * layer.rasterUnitsPerPixelY() * self.TILESIZE
+                    maxY = min(extent.yMaximum(), extent.yMinimum() + (y + 1) * layer.rasterUnitsPerPixelY() * self.TILESIZE)
+                    pt1 = QgsPoint(minX, minY)
+                    pt2 = QgsPoint(maxX, maxY)
+                    tileExtent = QgsRectangle(pt1, pt2)
+                    filename = os.path.join(folder, "%i_%i.tif" % (x, y))
+                    self._save(filename, tileExtent)
+                    i += 1
+                    setProgressValue(i)
+            closeProgressBar()
         return folder
 
     def tilesCount(self, extent):

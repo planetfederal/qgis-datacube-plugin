@@ -139,11 +139,16 @@ class MosaicWidget(BASE, WIDGET):
             '''We download the layers so we can access them locally'''
             for i, lay in enumerate(validLayers):
                 tilesFolders.append(lay.saveTiles(extent))
+                
             try:
                 qaBand = bandNames.index("pixel_qa")
             except:
                 qaBand = None
             tileFiles = os.listdir(tilesFolders[0])
+            if not tileFiles:
+                iface.messageBar().pushMessage("", "No available data within the selected extent.",
+                                               level=QgsMessageBar.WARNING)
+                return
             startProgressBar("Processing mosaic data", len(tileFiles))
             '''Now we process all tiles separately'''
             for i, filename in enumerate(tileFiles):
