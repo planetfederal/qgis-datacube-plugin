@@ -53,6 +53,7 @@ class MosaicWidget(BASE, WIDGET):
             self.setExtent(layer.extent())
 
     def unsetTool(self, tool):
+        from datacubeplugin.gui.selectextentmaptool import SelectExtentMapTool
         if not isinstance(tool, SelectExtentMapTool):
             self.buttonSelectExtentOnCanvas.setChecked(False)
 
@@ -139,7 +140,7 @@ class MosaicWidget(BASE, WIDGET):
             '''We download the layers so we can access them locally'''
             for i, lay in enumerate(validLayers):
                 tilesFolders.append(lay.saveTiles(extent))
-                
+
             try:
                 qaBand = bandNames.index("pixel_qa")
             except:

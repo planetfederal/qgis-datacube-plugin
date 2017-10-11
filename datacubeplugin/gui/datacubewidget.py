@@ -6,7 +6,7 @@ from qgis.gui import QgsMessageBar
 from qgis.utils import iface
 from qgis.PyQt import uic
 from qgis.PyQt.QtWidgets import QTreeWidgetItem, QLabel, QHBoxLayout, QWidget
-from qgis.PyQt.QtGui import QSizePolicy
+from qgis.PyQt.QtGui import QSizePolicy, QPixmap
 from qgis.PyQt.QtCore import Qt
 from qgiscommons2.layers import layerFromSource, WrongLayerSourceException
 from qgiscommons2.gui import execute, askForFolder
@@ -32,8 +32,11 @@ class DataCubeWidget(BASE, WIDGET):
         super(DataCubeWidget, self).__init__(parent)
         self.setupUi(self)
 
+        logoPath = os.path.join(os.path.dirname(os.path.dirname(__file__)), "icons", "datacube.png")
+        self.labelLogo.setText('<img src="%s" width="150">' % logoPath)
+
         self.plotParameters = []
-        
+
         self.yAbsoluteMin = 0
         self.yAbsoluteMax = 1
 
@@ -64,7 +67,7 @@ class DataCubeWidget(BASE, WIDGET):
 
     def fromSliderValue(self, v):
         return v * (self.yAbsoluteMax - self.yAbsoluteMin) / self.SLIDER_MAX +  self.yAbsoluteMin
-    
+
     def plotDataFilterChanged(self):
         xmin = dateFromDays(self.sliderStartDate.value())
         xmax = dateFromDays(self.sliderEndDate.value())
@@ -190,18 +193,20 @@ class DataCubeWidget(BASE, WIDGET):
 
 class TreeItemWithLink(QTreeWidgetItem):
 
-    def __init__(self, parent, tree, text, linkText):
+    def __init__(self, parent, tree, text, linkText, linkColor="blue"):
         QTreeWidgetItem.__init__(self, parent)
         self.parent = parent
         self.tree = tree
         layout = QHBoxLayout()
         layout.setContentsMargins(0, 0, 0, 0)
         self.label = QLabel()
+        if os.path.exists(text):
+            text = '<img src="%s">' % text
         self.label.setText(text)
         layout.addWidget(self.label)
         if linkText:
             self.linkLabel = QLabel()
-            self.linkLabel.setText("<a href='#'> %s</a>" % linkText)
+            self.linkLabel.setText("<a href='#' style='color: %s;'> %s</a>" % (linkColor, linkText))
             self.linkLabel.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
             layout.addWidget(self.linkLabel)
             self.linkLabel.linkActivated.connect(self.linkClicked)
@@ -212,7 +217,8 @@ class TreeItemWithLink(QTreeWidgetItem):
 class AddEndpointTreeItem(TreeItemWithLink):
 
     def __init__(self, parent, tree, widget):
-        TreeItemWithLink.__init__(self, parent, tree, "", "Add new data source")
+        iconPath = os.path.join(os.path.dirname(os.path.dirname(__file__)), "icons", "plus.png")
+        TreeItemWithLink.__init__(self, parent, tree, iconPath, "Add new data source", "DodgerBlue")
         self.widget = widget
 
     def linkClicked(self):
