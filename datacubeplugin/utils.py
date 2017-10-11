@@ -47,5 +47,6 @@ def dateFromDays(days):
 def setLayerRGB(layer, r, g, b):
     renderer = QgsMultiBandColorRenderer(layer.dataProvider(), r + 1, g + 1, b + 1)
     layer.setRenderer(renderer)
+    layer.setDefaultContrastEnhancement()
     layer.triggerRepaint()
     iface.legendInterface().refreshLayerSymbology(layer)
