@@ -6,8 +6,9 @@ from qgis.gui import QgsMessageBar
 from qgis.utils import iface
 from qgis.PyQt import uic
 from qgis.PyQt.QtWidgets import QTreeWidgetItem, QLabel, QHBoxLayout, QWidget
-from qgis.PyQt.QtGui import QSizePolicy, QPixmap
-from qgis.PyQt.QtCore import Qt
+from qgis.PyQt.QtGui import QSizePolicy, QPixmap, QImage, QPainter, QIcon
+from qgis.PyQt.QtCore import Qt, QSize
+from qgis.PyQt.QtSvg import QSvgRenderer
 from qgiscommons2.layers import layerFromSource, WrongLayerSourceException
 from qgiscommons2.gui import execute, askForFolder
 
@@ -193,15 +194,23 @@ class DataCubeWidget(BASE, WIDGET):
 
 class TreeItemWithLink(QTreeWidgetItem):
 
-    def __init__(self, parent, tree, text, linkText, linkColor="blue"):
+    def __init__(self, parent, tree, text, linkText, linkColor="blue", icon=None):
         QTreeWidgetItem.__init__(self, parent)
         self.parent = parent
         self.tree = tree
         layout = QHBoxLayout()
         layout.setContentsMargins(0, 0, 0, 0)
         self.label = QLabel()
-        if os.path.exists(text):
-            text = '<img src="%s">' % text
+        if os.path.exists(icon):
+            svg_renderer = QSvgRenderer(icon)
+            image = QImage(32, 32, QImage.Format_ARGB32)
+            # Set the ARGB to 0 to prevent rendering artifacts
+            image.fill(0x00000000)
+            svg_renderer.render(QPainter(image))
+            pixmap = QPixmap.fromImage(image)
+            icon = QIcon(pixmap)
+            self.setIcon(0, icon)
+            self.setSizeHint(0, QSize(32, 32))
         self.label.setText(text)
         layout.addWidget(self.label)
         if linkText:
@@ -217,8 +226,8 @@ class TreeItemWithLink(QTreeWidgetItem):
 class AddEndpointTreeItem(TreeItemWithLink):
 
     def __init__(self, parent, tree, widget):
-        iconPath = os.path.join(os.path.dirname(os.path.dirname(__file__)), "icons", "plus.png")
-        TreeItemWithLink.__init__(self, parent, tree, iconPath, "Add new data source", "DodgerBlue")
+        iconPath = os.path.join(os.path.dirname(os.path.dirname(__file__)), "icons", "plus.svg")
+        TreeItemWithLink.__init__(self, parent, tree, "", "Add new data source", "DodgerBlue", iconPath)
         self.widget = widget
 
     def linkClicked(self):
