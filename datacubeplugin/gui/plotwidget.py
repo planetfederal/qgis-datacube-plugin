@@ -140,7 +140,6 @@ class PlotWidget(BASE, WIDGET):
                             x = rectangle.xMinimum() + col * layer.rasterUnitsPerPixelX()
                             for row in range(ysteps):
                                 y = rectangle.yMinimum() + row * layer.rasterUnitsPerPixelY()
-                                pt = QgsPoint(x, y)
                                 pixel = QgsPoint(col, row)
                                 value = self.parameter.value(roi, pixel, bands)
                                 if value:
