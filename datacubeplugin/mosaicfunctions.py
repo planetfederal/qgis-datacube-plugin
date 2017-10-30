@@ -35,7 +35,6 @@ class MosaicFunction():
         return np.array(resultRows)
 
     def checkMask(self, v):
-        return True
         return v is None or v not in [2, 4, 255]
 
 
