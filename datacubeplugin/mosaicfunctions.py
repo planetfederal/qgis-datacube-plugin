@@ -1,5 +1,7 @@
 import numpy as np
 
+NO_DATA = -99999
+
 class MosaicFunction():
 
     def computeQAMask(self, qas):
@@ -30,7 +32,10 @@ class MosaicFunction():
                         valid = self.checkMask(qa[idx].item(y, x))
                     if valid:
                         validValues.append(v)
-                resultRow.append(self._compute(validValues))
+                if validValues:
+                    resultRow.append(self._compute(validValues))
+                else:
+                    resultRow.append(NO_DATA)
             resultRows.append(resultRow)
         return np.array(resultRows)
 

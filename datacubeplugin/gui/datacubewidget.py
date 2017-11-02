@@ -201,7 +201,7 @@ class TreeItemWithLink(QTreeWidgetItem):
         layout = QHBoxLayout()
         layout.setContentsMargins(0, 0, 0, 0)
         self.label = QLabel()
-        if os.path.exists(icon):
+        if icon and os.path.exists(icon):
             svg_renderer = QSvgRenderer(icon)
             image = QImage(32, 32, QImage.Format_ARGB32)
             # Set the ARGB to 0 to prevent rendering artifacts

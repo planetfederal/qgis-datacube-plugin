@@ -11,7 +11,7 @@ from dateutil import parser
 from osgeo import gdal
 from osgeo.gdalconst import GA_ReadOnly
 from datacubeplugin.gui.selectextentmaptool import SelectExtentMapTool
-from datacubeplugin.mosaicfunctions import mosaicFunctions
+from datacubeplugin.mosaicfunctions import mosaicFunctions, NO_DATA
 from datacubeplugin.utils import addLayerIntoGroup, dateFromDays, daysFromDate
 from datacubeplugin.layers import getArray
 from qgiscommons2.gui import execute, startProgressBar, closeProgressBar, setProgressValue
@@ -157,7 +157,7 @@ class MosaicWidget(BASE, WIDGET):
                 newBands = {}
                 files = [os.path.join(folder, filename) for folder in tilesFolders]
                 if qaBand is not None:
-                    qaData = [getArray(f, qaBand) for f in files]
+                    qaData = [getArray(f, qaBand + 1) for f in files]
                 else:
                     qaData = None
                 '''
@@ -171,7 +171,6 @@ class MosaicWidget(BASE, WIDGET):
                         bandData = [getArray(f, band + 1) for f in files]
                         newBands[bandName] = mosaicFunction.compute(bandData, qaData)
                         bandData = None
-
 
                 '''We write the set of bands as a new layer. That will be an output tile'''
                 templateFilename = os.path.join(tilesFolders[0], filename)
@@ -190,6 +189,7 @@ class MosaicWidget(BASE, WIDGET):
 
                 for i, band in enumerate(bandNames):
                     gdalBand = dstDs.GetRasterBand(i+1)
+                    gdalBand.SetNoDataValue(NO_DATA)
                     gdalBand.WriteArray(newBands[band])
                     gdalBand.FlushCache()
                 del newBands
