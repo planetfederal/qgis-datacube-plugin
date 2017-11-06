@@ -83,4 +83,4 @@ To create a mosaic you must select the following elements:
 
 - The criteria to use for selecting pixels from the available ones for a given location. Available ones include: more recent pixel, least recent, median and geomedian
 
-Clicking on the *Create Mosaic* will lauch the mosaic creation process. Data is downloaded from the endpoint in 256x256 tiles, which are later processed individually accordin to the criteria defined. The final set of output tiles is loaded as a single layer in the current QGIS project, using a virtual raster layer (VRT). 
+Clicking on the *Create Mosaic* will lauch the mosaic creation process. Data is downloaded from the endpoint in 256x256 tiles, which are later processed individually according to the criteria defined. The final set of output tiles is loaded as a single layer in the current QGIS project, using a virtual raster layer (VRT). 
