@@ -160,17 +160,35 @@ class MosaicWidget(BASE, WIDGET):
                     qaData = [getArray(f, qaBand + 1) for f in files]
                 else:
                     qaData = None
-                '''
-                We operate band by band, since a given band in the the final result
-                layer depends only on the values of that band in the input layers,
-                not the valu of other bands'''
-                for band, bandName in enumerate(bandNames):
-                    if band == qaBand:
-                        newBands[bandName] = mosaicFunction.computeQAMask(qaData)
-                    else:
-                        bandData = [getArray(f, band + 1) for f in files]
-                        newBands[bandName] = mosaicFunction.compute(bandData, qaData)
-                        bandData = None
+                    
+                if mosaicFunction.bandByBand:
+                    '''
+                    We operate band by band, since a given band in the the final result
+                    layer depends only on the values of that band in the input layers,
+                    not the value of other bands'''
+                    for band, bandName in enumerate(bandNames):
+                        if band == qaBand:
+                            newBands[bandName] = mosaicFunction.computeQAMask(qaData)
+                        else:
+                            bandData = [getArray(f, band + 1) for f in files]
+                            newBands[bandName] = mosaicFunction.compute(bandData, qaData)
+                            bandData = None
+                else:
+                    '''
+                    We operate with all bands at once, and the output layer will
+                    have only one band computed from the set of them in the input
+                    layers'''
+                    bandData = []
+                    bandNamesArray = []
+                    for i, band in enumerate(bandNames):
+                        if i != qaBand:                            
+                            bandData.append([getArray(f, i + 1) for f in files])
+                            bandNamesArray.append(band)                           
+                    newBandsArray = mosaicFunction.compute(bandData, qaData)
+                    newBands = {k: v for k, v in zip(bandNamesArray, newBandsArray)}
+                    if qaBand is not None:
+                        newBands[bandNames[qaBand]] = mosaicFunction.computeQAMask(qaData) 
+                    bandData = None
 
                 '''We write the set of bands as a new layer. That will be an output tile'''
                 templateFilename = os.path.join(tilesFolders[0], filename)

@@ -1,7 +1,7 @@
 Data Cube Plugin
 ==================
 
-[Write your plugin description here]
+A plugin to access a Data Cube and handle its layers in a simple way. Allows to create plots and mosaics from Data Cube layers.
 
 Installation
 ************
@@ -44,3 +44,11 @@ Usage
 *****
 
 Usage is documented `here <./docs/source/usage.rst>`_
+
+A note on plugin dependencies
+******************************
+
+The plugin requires the hdmedians library to compute the geomedian for creating mosaics. The correspoding paver task will download and compile it. This library contains Cython code, so the resulting binaries can only be used in the same platform as it was compiled. Running the paver package task will generate a package that can run on that platform, but not in other platforms.
+
+To create a package than can run on any QGIS, regardless of the Operating System, binaries must be added for all OSs in the corresponding folder in the ``ext-libs`` folder where dependencies are located.
+

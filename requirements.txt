@@ -1,4 +1,5 @@
 qgiscommons
 python-dateutil
+hdmedians
 
 # test requirements
