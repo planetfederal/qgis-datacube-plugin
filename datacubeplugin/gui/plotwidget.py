@@ -187,9 +187,8 @@ class PlotWidget(BASE, WIDGET):
             else:
                 sortedKeys = sorted(self.dataToPlot.keys())
                 y = [[v[0] for v in self.dataToPlot[k]] for k in sortedKeys]
-                axes.boxplot(y, positions = x)
-                axes.set_xticklabels([str(d).split(" ")[0] for d in sortedKeys], rotation=45)
-
+                axes.boxplot(y)
+                axes.set_xticklabels([str(d).split(" ")[0] for d in sortedKeys], rotation=70)
             self.figure.autofmt_xdate()
         except:
             return
