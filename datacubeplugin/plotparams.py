@@ -336,5 +336,5 @@ class NPV(PlotParameter):
 
 def getParameters(bands):
     parameters = [BandValue(b) for b in bands]
-    parameters.extend([NDVI(), NDBI(), EVI(), NDWI(), WOFS(), TSM(), BS(), PV(), NPV()])
+    parameters.extend([NDVI(), NDBI(), EVI(), NDWI(), WOFS(), TSM()])
     return parameters
