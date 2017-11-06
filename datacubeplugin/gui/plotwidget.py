@@ -183,7 +183,7 @@ class PlotWidget(BASE, WIDGET):
             x = matplotlib.dates.date2num(self.dataToPlot.keys())
             if self.rectangle is None:
                 y = [v[0][0] for v in self.dataToPlot.values() if v]
-                axes.plot_date(x,y)
+                axes.scatter(self.dataToPlot.keys(), y)
             else:
                 sortedKeys = sorted(self.dataToPlot.keys())
                 y = [[v[0] for v in self.dataToPlot[k]] for k in sortedKeys]
