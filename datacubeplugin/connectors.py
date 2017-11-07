@@ -228,7 +228,7 @@ class FileLayer(Layer):
         return self._time
 
     def datasetName(self):
-        return os.path.dirname(self.folder)
+        return "[...]/" + os.path.basename(os.path.dirname(self.folder))
 
     def coverageName(self):
         return os.path.basename(self.folder)

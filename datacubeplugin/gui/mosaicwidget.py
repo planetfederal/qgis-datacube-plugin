@@ -223,6 +223,9 @@ class MosaicWidget(BASE, WIDGET):
             processing.runalg("gdalogr:buildvirtualraster", {"INPUT":toMerge, "SEPARATE":False, "OUTPUT":outputFile})
 
             layer = QgsRasterLayer(outputFile, "Mosaic [%s]" % mosaicFunction.name, "gdal")
+
+            layers._mosaicLayers[validLayers[0].datasetName()][validLayers[0].coverageName()].append(outputFile)
+
             addLayerIntoGroup(layer, validLayers[0].datasetName(), validLayers[0].coverageName(), bandNames)
 
             closeProgressBar()

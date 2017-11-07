@@ -4,6 +4,7 @@ from osgeo import gdal
 from osgeo.gdalconst import GA_ReadOnly
 
 _layers = {}
+_mosaicLayers = defaultdict(lambda:defaultdict(list))
 _coverages = {}
 _rendering = defaultdict(defaultdict)
 

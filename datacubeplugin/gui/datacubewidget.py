@@ -1,5 +1,7 @@
 import os
 
+import itertools
+
 from qgis.core import *
 from qgis.gui import QgsMessageBar
 
@@ -136,13 +138,18 @@ class DataCubeWidget(BASE, WIDGET):
         g = self.comboG.currentIndex()
         b = self.comboB.currentIndex()
         layers._rendering[name][coverageName] = (r, g, b)
-        for layer in layers._layers[name][coverageName]:
-            source = layer.source()
+        try:
+            mosaics = layers._mosaicLayers[name][coverageName]
+        except KeyError:
+            mosaics = []
+        for layer in itertools.chain(layers._layers[name][coverageName], mosaics):
+            source = layer if isinstance(layer, basestring) else layer.source()
             try:
                 layer = layerFromSource(source)
                 setLayerRGB(layer, r, g, b)
             except WrongLayerSourceException:
                 pass
+
 
     def coverageForRGBHasChanged(self):
         self.updateRGBFields()

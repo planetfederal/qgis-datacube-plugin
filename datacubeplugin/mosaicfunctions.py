@@ -1,6 +1,10 @@
 import numpy as np
 import math
-import hdmedians as hd
+try:   
+    import hdmedians as hd
+    geomMedianOk = True
+except:
+    geoMedianOk = False
 
 #to be able to use the geomedian library if numpy < 1.9
 np.nanmedian=np.median
@@ -45,6 +49,7 @@ class MosaicFunction():
                     else:
                         resultRow.append(NO_DATA)
                 resultRows.append(resultRow)
+            return np.array(resultRows)
         else:
             resultRows = [[] for _ in range(len(values))]
             for y in xrange(values[0][0].shape[0]):
@@ -70,7 +75,7 @@ class MosaicFunction():
                         resultRow[i].append(v)
                 for i in range(len(values)):
                     resultRows[i].append(resultRow[i])
-        return [np.array(b) for b in resultRows]
+            return [np.array(b) for b in resultRows]
 
     def checkMask(self, v):
         return v is None or v not in [2, 4, 255]
@@ -105,4 +110,6 @@ class GeoMedian(MosaicFunction):
     def _compute(self, values):
         return hd.nangeomedian(np.array(values))
 
-mosaicFunctions = [MostRecent(), LeastRecent(), Median(), GeoMedian()]
+mosaicFunctions = [MostRecent(), LeastRecent(), Median()]
+if geoMedianOk:
+    mosaicFunctions.append(GeoMedian())
