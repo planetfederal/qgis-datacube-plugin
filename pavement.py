@@ -157,6 +157,8 @@ def make_zip(zipFile, options):
 def create_settings_docs(options):
     settings_file = path(options.plugin.name) / "settings.json"
     doc_file = options.sphinx.sourcedir / "settingsconf.rst"
+    if not os.path.exists(settings_file):
+        return
     with open(settings_file) as f:
         settings = json.load(f)
 
