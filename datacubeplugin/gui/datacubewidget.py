@@ -265,25 +265,34 @@ class AddEndpointTreeItem(TreeItemWithLink):
         if coverages:
             endpointItem = QTreeWidgetItem()
             endpointItem.setText(0, connector.name())
-            self.tree.addTopLevelItem(endpointItem)
+        emptyCoverages = 0
         for coverageName in coverages:
-            #item.setText(0, coverageName)
-            #endpointItem.addChild(item)
             coverage = connector.coverage(coverageName)
-            item = CoverageItem(endpointItem, self.tree, coverage)
             timepositions = coverage.timePositions()
-            timeLayers = []
-            for time in timepositions:
-                layer = coverage.layerForTimePosition(time)
-                timeLayers.append(layer)
-                subitem = LayerTreeItem(layer, self.widget)
-                item.addChild(subitem)
-            layers._layers[connector.name()][coverageName] = timeLayers
-            layers._coverages[connector.name()][coverageName] = coverage
-            self.widget.comboCoverageToPlot.addItem(connector.name() + " : " + coverageName)
-            self.widget.comboCoverageForRGB.addItem(connector.name() + " : " + coverageName)
-            mosaicWidget.comboCoverage.addItem(connector.name() + " : " + coverageName)
+            if timepositions:
+                item = CoverageItem(endpointItem, self.tree, coverage)
+                timeLayers = []
+                for time in timepositions:
+                    layer = coverage.layerForTimePosition(time)
+                    timeLayers.append(layer)
+                    subitem = LayerTreeItem(layer, self.widget)
+                    item.addChild(subitem)
+                layers._layers[connector.name()][coverageName] = timeLayers
+                layers._coverages[connector.name()][coverageName] = coverage
+                self.widget.comboCoverageToPlot.addItem(connector.name() + " : " + coverageName)
+                self.widget.comboCoverageForRGB.addItem(connector.name() + " : " + coverageName)
+                mosaicWidget.comboCoverage.addItem(connector.name() + " : " + coverageName)
+            else:
+                emptyCoverages += 1
         iface.mainWindow().statusBar().showMessage("")
+        if emptyCoverages == len(coverages):
+            iface.messageBar().pushMessage("", "No coverages with timepositions were found in server.", level=QgsMessageBar.WARNING)
+        else:
+            self.tree.addTopLevelItem(endpointItem)
+            if emptyCoverages:
+                iface.messageBar().pushMessage("", 
+                        "%i out of %i coverages do not declare any time position and could not be added." % (emptyCoverages, len(coverages)),
+                        level=QgsMessageBar.WARNING)
 
 class CoverageItem(TreeItemWithLink):
 
