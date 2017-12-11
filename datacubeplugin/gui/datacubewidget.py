@@ -321,7 +321,8 @@ class LayerTreeItem(QTreeWidgetItem):
                     addLayerIntoGroup(layer, name, coverageName, self.layer.bands())
                     mosaicWidget.updateDates()
                 else:
-                    iface.mainWindow().statusBar().showMessage("Invalid layer")
+                    iface.messageBar().pushMessage("", "Invalid layer.",
+                                               level=QgsMessageBar.WARNING)
         else:
             try:
                 layer = layerFromSource(source)

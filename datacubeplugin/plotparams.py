@@ -44,6 +44,13 @@ class PlotParameter():
     def __str__(self):
         return self.name
 
+    def canBeComputed(self, bands):
+        for b in self.requiredBands:
+            if b not in bands:
+                return False
+
+        return True
+
     def value(self, layer, pt, bands):
         if self.checkMask(layer, pt, bands):
             return self._value(layer, pt, bands)
@@ -58,6 +65,7 @@ class PlotParameter():
 class BandValue(PlotParameter):
 
     def __init__(self, name):
+        self.requiredBands = [name]
         self.name = name
 
     def _value(self, layer, pt, bands):
@@ -67,6 +75,7 @@ class BandValue(PlotParameter):
 class NDVI(PlotParameter):
 
     name = "NDVI"
+    requiredBands = ["red", "nir"]
 
     def _value(self, layer, pt, bands):
         r = getR(layer, pt, bands)
@@ -78,6 +87,7 @@ class NDVI(PlotParameter):
 class EVI(PlotParameter):
 
     name = "EVI"
+    requiredBands = ["red", "blue", "nir"]
 
     def _value(self, layer, pt, bands):
         L=1
@@ -94,6 +104,7 @@ class EVI(PlotParameter):
 class NDWI(PlotParameter):
 
     name = "NDWI"
+    requiredBands = ["green", "nir"]
 
     def _value(self, layer, pt, bands):
         nir = getNIR(layer, pt, bands)
@@ -105,6 +116,7 @@ class NDWI(PlotParameter):
 class NDBI(PlotParameter):
 
     name = "NDBI"
+    requiredBands = ["swir1", "nir"]
 
     def _value(self, layer, pt, bands):
         nir = getNIR(layer, pt, bands)
@@ -116,6 +128,7 @@ class NDBI(PlotParameter):
 class WOFS(PlotParameter):
 
     name = "WOFS"
+    requiredBands = ["red", "green", "blue", "nir", "swir1", "swir2"]
 
     def _value(self, layer, pt, bands):
 
@@ -232,6 +245,7 @@ class WOFS(PlotParameter):
 class TSM(PlotParameter):
 
     name = "TSM"
+    requiredBands = ["red", "green"]
 
     def _value(self, layer, pt, bands):
         g = getG(layer, pt, bands)
@@ -335,6 +349,9 @@ class NPV(PlotParameter):
         return fc[2]
 
 def getParameters(bands):
-    parameters = [BandValue(b) for b in bands]
-    parameters.extend([NDVI(), NDBI(), EVI(), NDWI(), WOFS(), TSM()])
+    indices = [NDVI(), NDBI(), EVI(), NDWI(), WOFS(), TSM()]
+    blacklisted = ["coastal_aerosol", "aerosol_qa", "radsat_qa", "solar_azimuth",
+                   "solar_zenith", "sensor_azimuth", "sensor_zenith"]
+    parameters = [BandValue(b) for b in bands if b not in blacklisted]
+    parameters.extend([ind for ind in indices if ind.canBeComputed(bands)])
     return parameters
