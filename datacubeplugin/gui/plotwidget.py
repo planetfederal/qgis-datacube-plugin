@@ -84,7 +84,7 @@ class PlotWidget(BASE, WIDGET):
             return
         for layerdef in allCoverageLayers:
             source = layerdef.source()
-            time = layerdef.time()
+            time = parser.parse(layerdef.time())
             try:
                 layer = layerFromSource(source)
                 canvasLayers.append((layerdef, time))
@@ -94,6 +94,18 @@ class PlotWidget(BASE, WIDGET):
         if not canvasLayers:
             return
 
+        minDate = None
+        maxDate = None
+        minY = None
+        maxY = None
+        if self.filter:
+            if self.filter[0] is not None:
+                minDate = self.filter[0]
+            if self.filter[1] is not None:
+                maxDate = self.filter[1]
+            minY = self.filter[2] or None
+            maxY = self.filter[3] or None
+
         try:
             bands = allCoverageLayers[0].bands()
 
@@ -101,14 +113,13 @@ class PlotWidget(BASE, WIDGET):
                 self.data = {}
                 startProgressBar("Retrieving plot data", len(canvasLayers))
                 for (i, (layerdef, time)) in enumerate(canvasLayers):
-                    if self.filter and ((self.filter[0] is not None and time < self.filter[0])
-                                   or (self.filter[1] is not None and time > self.filter[1])):
+                    if ((minDate is not None and time < minDate) or
+                        (maxDate is not None and time > maxDate)):
                         continue
                     layer = layerdef.layer()
                     v = self.parameter.value(layer, self.pt, bands)
                     setProgressValue(i + 1)
                     if v is not None:
-                        time = parser.parse(time)
                         self.data[time] = [(v, (self.pt.x(), self.pt.y()))]
                 closeProgressBar()
                 if not self.data:
@@ -120,8 +131,8 @@ class PlotWidget(BASE, WIDGET):
                 self.data = {}
                 startProgressBar("Retrieving plot data", len(canvasLayers))
                 for (i, (layerdef, time)) in enumerate(canvasLayers):
-                    if self.filter and ((self.filter[0] is not None and time < self.filter[0])
-                                   or (self.filter[1] is not None and time > self.filter[1])):
+                    if ((minDate is not None and time < minDate) or
+                        (maxDate is not None and time > maxDate)):
                         continue
                     layer = layerdef.layer()
                     if not self.rectangle.intersects(layer.extent()):
@@ -151,14 +162,16 @@ class PlotWidget(BASE, WIDGET):
 
             xmin = min(self.data.keys())
             xmax = max(self.data.keys())
-            self.plotDataChanged.emit(xmin, xmax, ymin, ymax)
+
+            if self.filter is None:
+                self.plotDataChanged.emit(xmin, xmax, ymin, ymax)
             self.dataToPlot = copy.deepcopy(self.data)
 
             if self.filter:
                 for key, values in self.data.iteritems():
                     for v in values[::-1]:
-                        if ((self.filter[2] is not None and  v[0] < self.filter[2])
-                            or self.filter[3]is not None and v[0] > self.filter[3]):
+                        if ((minY is not None and  v[0] < minY)
+                            or (maxY is not None and v[0] > maxY)):
                             try:
                                 self.dataToPlot[key].remove(v)
                             except:
@@ -175,7 +188,6 @@ class PlotWidget(BASE, WIDGET):
             x = matplotlib.dates.date2num(self.dataToPlot.keys())
             if self.rectangle is None:
                 y = [v[0][0] for v in self.dataToPlot.values() if v]
-                print y
                 axes.scatter(self.dataToPlot.keys(), y)
             else:
                 sortedKeys = sorted(self.dataToPlot.keys())
@@ -183,7 +195,8 @@ class PlotWidget(BASE, WIDGET):
                 axes.boxplot(y)
                 axes.set_xticklabels([str(d).split(" ")[0] for d in sortedKeys], rotation=70)
             self.figure.autofmt_xdate()
-        except:
+        except Exception, e:
+            closeProgressBar()
             return
 
         self.buttonSave.setEnabled(True)

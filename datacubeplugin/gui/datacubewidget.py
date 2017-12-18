@@ -23,6 +23,7 @@ from datacubeplugin.gui.plotwidget import plotWidget
 from datacubeplugin.gui.mosaicwidget import mosaicWidget
 from datacubeplugin import plotparams
 from datacubeplugin.utils import addLayerIntoGroup, dateFromDays, daysFromDate, setLayerRGB
+import datetime
 
 pluginPath = os.path.dirname(os.path.dirname(__file__))
 WIDGET, BASE = uic.loadUiType(
@@ -187,10 +188,12 @@ class DataCubeWidget(BASE, WIDGET):
             param = self.plotParameters[self.comboParameterToPlot.currentIndex()]
             _filter = None
             if self.chkFilter.isChecked():
-                xmin = self.txtStartDate.date()
-                xmax = self.txtEndDate.date()
-                ymin = self.txtMinY.text() or None
-                ymax = self.txtMaxY.text() or None
+                xmin = self.txtStartDate.date().toPyDate()
+                xmax = self.txtEndDate.date().toPyDate()
+                xmin = datetime.datetime(xmin.year, xmin.month, xmin.day)
+                xmax = datetime.datetime(xmax.year, xmax.month, xmax.day)
+                ymin = float(self.txtMinY.text()) or None
+                ymax = float(self.txtMaxY.text()) or None
                 _filter = [xmin, xmax, ymin, ymax]
             plotWidget.plot(dataset=name, coverage=coverageName, parameter=param,
                             _filter=_filter, pt=self.pt, rectangle=self.rectangle)
