@@ -3,24 +3,27 @@ from qgis.PyQt.QtWidgets import QApplication
 from qgis.PyQt.QtGui import QCursor
 
 from qgis.core import QgsCoordinateReferenceSystem, QgsCoordinateTransform, QGis, QgsPoint, QgsRectangle
+from qgis.PyQt.QtCore import pyqtSignal
+
 from qgis.gui import QgsMapTool, QgsMessageBar, QgsMapToolEmitPoint, QgsRubberBand
 from qgis.utils import iface
 
-from datacubeplugin.gui.plotwidget import plotWidget
-
 class PointSelectionMapTool(QgsMapTool):
+
+    pointSelected = pyqtSignal(object)
 
     def __init__(self, canvas):
         QgsMapTool.__init__(self, canvas)
         self.setCursor(Qt.CrossCursor)
 
     def canvasReleaseEvent(self, e):
-        plotWidget.show()
         pt = self.toMapCoordinates(e.pos())
-        plotWidget.setPoint(pt)
+        self.pointSelected.emit(pt)
 
 class RegionSelectionMapTool(QgsMapTool):
 
+    regionSelected = pyqtSignal(object)
+    
     def __init__(self, canvas):
         self.canvas = canvas
         QgsMapTool.__init__(self, self.canvas)
@@ -43,10 +46,8 @@ class RegionSelectionMapTool(QgsMapTool):
 
     def canvasReleaseEvent(self, e):
         self.isEmittingPoint = False
-        plotWidget.show()
-        plotWidget.setRectangle(self.rectangle())
+        self.regionSelected.emit(self.rectangle())
         self.reset()
-
 
     def canvasMoveEvent(self, e):
         if not self.isEmittingPoint:

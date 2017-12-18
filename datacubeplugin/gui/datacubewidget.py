@@ -8,7 +8,7 @@ from qgis.gui import QgsMessageBar
 from qgis.utils import iface
 from qgis.PyQt import uic
 from qgis.PyQt.QtWidgets import QTreeWidgetItem, QLabel, QHBoxLayout, QWidget
-from qgis.PyQt.QtGui import QSizePolicy, QPixmap, QImage, QPainter, QIcon
+from qgis.PyQt.QtGui import QSizePolicy, QPixmap, QImage, QPainter, QIcon, QDoubleValidator
 from qgis.PyQt.QtCore import Qt, QSize
 from qgis.PyQt.QtSvg import QSvgRenderer
 from qgiscommons2.layers import layerFromSource, WrongLayerSourceException
@@ -40,6 +40,9 @@ class DataCubeWidget(BASE, WIDGET):
 
         self.plotParameters = []
 
+        self.rectangle = None
+        self.pt = None
+
         self.yAbsoluteMin = 0
         self.yAbsoluteMax = 1
 
@@ -54,65 +57,45 @@ class DataCubeWidget(BASE, WIDGET):
         self.selectPointButton.clicked.connect(self.togglePointMapTool)
         self.selectRegionButton.clicked.connect(self.toggleRegionMapTool)
 
-        self.comboCoverageToPlot.currentIndexChanged.connect(self.coverageToPlotHasChanged)
-        self.comboParameterToPlot.currentIndexChanged.connect(self.parameterToPlotHasChanged)
-
         iface.mapCanvas().mapToolSet.connect(self.unsetTool)
 
         self.pointSelectionTool = PointSelectionMapTool(iface.mapCanvas())
         self.regionSelectionTool = RegionSelectionMapTool(iface.mapCanvas())
-        self.sliderStartDate.valueChanged.connect(self.plotDataFilterChanged)
-        self.sliderEndDate.valueChanged.connect(self.plotDataFilterChanged)
-        self.sliderMinY.valueChanged.connect(self.plotDataFilterChanged)
-        self.sliderMaxY.valueChanged.connect(self.plotDataFilterChanged)
-
         plotWidget.plotDataChanged.connect(self.plotDataChanged)
+        self.pointSelectionTool.pointSelected.connect(self.setPoint)
+        self.regionSelectionTool.regionSelected.connect(self.setRectangle)
 
-    def fromSliderValue(self, v):
-        return v * (self.yAbsoluteMax - self.yAbsoluteMin) / self.SLIDER_MAX +  self.yAbsoluteMin
+        self.comboCoverageToPlot.currentIndexChanged.connect(self.coverageToPlotHasChanged)
 
-    def plotDataFilterChanged(self):
-        xmin = dateFromDays(self.sliderStartDate.value())
-        xmax = dateFromDays(self.sliderEndDate.value())
-        ymin = self.fromSliderValue(self.sliderMinY.value())
-        ymax = self.fromSliderValue(self.sliderMaxY.value())
-        self.txtStartDate.setText(str(xmin).split(" ")[0])
-        self.txtEndDate.setText(str(xmax).split(" ")[0])
-        self.txtMinY.setText(str(ymin))
-        self.txtMaxY.setText(str(ymax))
-        _filter = [xmin, xmax, ymin, ymax]
-        plotWidget.plot(_filter)
+        self.plotButton.clicked.connect(self.drawPlot)
+        self.chkFilter.stateChanged.connect(self.filterCheckChanged)
 
-    SLIDER_MAX = 1000
+        self.txtMinY.setValidator(QDoubleValidator(self))
+        self.txtMaxY.setValidator(QDoubleValidator(self))
+
+
+    def filterCheckChanged(self, state):
+        enabled = self.chkFilter.isChecked()
+        self.txtStartDate.setEnabled(enabled)
+        self.txtEndDate.setEnabled(enabled)
+        self.txtMinY.setEnabled(enabled)
+        self.txtMaxY.setEnabled(enabled)
+
+    def coverageToPlotHasChanged(self):
+        txt = self.comboCoverageToPlot.currentText()
+        name, coverageName = txt.split(" : ")
+        bands = layers._coverages[name][coverageName].bands
+        self.plotParameters = plotparams.getParameters(bands)
+        self.comboParameterToPlot.blockSignals(True)
+        self.comboParameterToPlot.clear()
+        self.comboParameterToPlot.addItems([str(p) for p in self.plotParameters])
+        self.comboParameterToPlot.blockSignals(False)
+
     def plotDataChanged(self, xmin, xmax, ymin, ymax):
-        widgets = [self.sliderMinY, self.sliderMaxY, self.sliderStartDate, self.sliderEndDate]
-
-        for w in widgets:
-            w.blockSignals(True)
-
-        self.yAbsoluteMin = ymin
-        self.yAbsoluteMax = ymax
-        self.sliderMinY.setMinimum(0)
-        self.sliderMaxY.setMinimum(0)
-        self.sliderMinY.setMaximum(self.SLIDER_MAX)
-        self.sliderMaxY.setMaximum(self.SLIDER_MAX)
-        self.sliderMaxY.setValue(self.SLIDER_MAX)
-        self.sliderMinY.setValue(0)
-
-        self.sliderStartDate.setMinimum(daysFromDate(xmin) - 1)
-        self.sliderEndDate.setMinimum(daysFromDate(xmin) - 1)
-        self.sliderStartDate.setMaximum(daysFromDate(xmax) + 1)
-        self.sliderEndDate.setMaximum(daysFromDate(xmax) + 1)
-        self.sliderStartDate.setValue(daysFromDate(xmin) - 1)
-        self.sliderEndDate.setValue(daysFromDate(xmax) + 1)
-
-        self.txtStartDate.setText(str(xmin).split(" ")[0])
-        self.txtEndDate.setText(str(xmax).split(" ")[0])
+        self.txtStartDate.setDate(xmin)
+        self.txtEndDate.setDate(xmax)
         self.txtMinY.setText(str(ymin))
         self.txtMaxY.setText(str(ymax))
-
-        for w in widgets:
-            w.blockSignals(False)
 
     def treeItemClicked(self, item, col):
         if isinstance(item, LayerTreeItem):
@@ -159,7 +142,10 @@ class DataCubeWidget(BASE, WIDGET):
         if nameToUpdate is not None and (name != nameToUpdate or coverageName != coverageNameToUpdate):
             return
 
+        blacklisted = ["coastal_aerosol", "aerosol_qa", "radsat_qa", "solar_azimuth",
+                   "solar_zenith", "sensor_azimuth", "sensor_zenith"]
         bands = layers._layers[name][coverageName][0].bands()
+        bands = [b for b in bands if b not in blacklisted]
         try:
             r, g, b = layers._rendering[name][coverageName]
         except KeyError:
@@ -183,21 +169,31 @@ class DataCubeWidget(BASE, WIDGET):
         self.comboB.addItems(bands)
         self.comboB.setCurrentIndex(b)
 
-    def parameterToPlotHasChanged(self):
-        param = self.plotParameters[self.comboParameterToPlot.currentIndex()]
-        plotWidget.plot(parameter=param)
+    def setRectangle(self, rect):
+        self.rectangle = rect
+        self.pt = None
+        self.txtSelectedArea.setText("Region selected")
 
-    def coverageToPlotHasChanged(self):
+    def setPoint(self, pt):
+        self.pt = pt
+        self.rectangle = None
+        self.txtSelectedArea.setText("Point selected: %d, %d" % (pt.x(), pt.y()))
+
+    def drawPlot(self):
+        plotWidget.show()
         txt = self.comboCoverageToPlot.currentText()
-        name, coverageName = txt.split(" : ")
-        bands = layers._coverages[name][coverageName].bands
-        self.plotParameters = plotparams.getParameters(bands)
-        self.comboParameterToPlot.blockSignals(True)
-        self.comboParameterToPlot.clear()
-        self.comboParameterToPlot.addItems([str(p) for p in self.plotParameters])
-        self.comboParameterToPlot.blockSignals(False)
-        plotWidget.plot(dataset=name, coverage=coverageName, parameter=self.plotParameters[0])
-
+        if txt:
+            name, coverageName = txt.split(" : ")
+            param = self.plotParameters[self.comboParameterToPlot.currentIndex()]
+            _filter = None
+            if self.chkFilter.isChecked():
+                xmin = self.txtStartDate.date()
+                xmax = self.txtEndDate.date()
+                ymin = self.txtMinY.text() or None
+                ymax = self.txtMaxY.text() or None
+                _filter = [xmin, xmax, ymin, ymax]
+            plotWidget.plot(dataset=name, coverage=coverageName, parameter=param,
+                            _filter=_filter, pt=self.pt, rectangle=self.rectangle)
 
 class TreeItemWithLink(QTreeWidgetItem):
 
@@ -290,7 +286,7 @@ class AddEndpointTreeItem(TreeItemWithLink):
         else:
             self.tree.addTopLevelItem(endpointItem)
             if emptyCoverages:
-                iface.messageBar().pushMessage("", 
+                iface.messageBar().pushMessage("",
                         "%i out of %i coverages do not declare any time position and could not be added." % (emptyCoverages, len(coverages)),
                         level=QgsMessageBar.WARNING)
 

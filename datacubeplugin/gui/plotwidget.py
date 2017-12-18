@@ -57,23 +57,16 @@ class PlotWidget(BASE, WIDGET):
                         x,y = v[1]
                         writer.writerow([time, x, y, v[0]])
 
-    def setRectangle(self, rect):
-        self.rectangle = rect
-        self.pt = None
-        self.plot()
-
-    def setPoint(self, pt):
-        self.pt = pt
-        self.rectangle = None
-        self.plot()
-
-    def plot(self, filter=None, parameter=None, coverage=None, dataset=None):
+    def plot(self, _filter=None, parameter=None, coverage=None, dataset=None, pt=None, rectangle=None):
         self.parameter = parameter or self.parameter
         self.coverage = coverage or self.coverage
         self.dataset = dataset or self.dataset
-        execute(lambda: self._plot(filter))
+        self.pt = pt
+        self.rectangle = rectangle
+        self.filter = _filter
+        execute(self._plot)
 
-    def _plot(self, filter=None):
+    def _plot(self):
         self.figure.clear()
         self.canvas.draw()
         self.buttonSave.setEnabled(False)
@@ -102,70 +95,70 @@ class PlotWidget(BASE, WIDGET):
             return
 
         try:
-            if filter is None:
-                bands = allCoverageLayers[0].bands()
+            bands = allCoverageLayers[0].bands()
 
-                if self.rectangle is None:
-                    self.data = {}
-                    startProgressBar("Retrieving plot data", len(canvasLayers))
-                    for (i, (layerdef, time)) in enumerate(canvasLayers):
-                        layer = layerdef.layer()
-                        v = self.parameter.value(layer, self.pt, bands)
-                        setProgressValue(i + 1)
-                        if v is not None:
-                            time = parser.parse(time)
-                            self.data[time] = [(v, (self.pt.x(), self.pt.y()))]
-                    closeProgressBar()
-                    if not self.data:
-                        return
-                    y = [v[0][0] for v in self.data.values()]
-                    ymin = min(y)
-                    ymax = max(y)
-                else:
-                    self.data = {}
-                    startProgressBar("Retrieving plot data", len(canvasLayers))
-                    for (i, (layerdef, time)) in enumerate(canvasLayers):
-                        layer = layerdef.layer()
-                        if not self.rectangle.intersects(layer.extent()):
-                            continue
-                        rectangle = self.rectangle.intersect(layer.extent())
-                        xsteps = int(rectangle.width() / layer.rasterUnitsPerPixelX())
-                        ysteps = int(rectangle.height() / layer.rasterUnitsPerPixelY())
-                        filename = layerdef.layerFile(rectangle)
-                        roi = layers.getBandArrays(filename)
-                        setProgressValue(i + 1)
+            if self.rectangle is None:
+                self.data = {}
+                startProgressBar("Retrieving plot data", len(canvasLayers))
+                for (i, (layerdef, time)) in enumerate(canvasLayers):
+                    if self.filter and ((self.filter[0] is not None and time < self.filter[0])
+                                   or (self.filter[1] is not None and time > self.filter[1])):
+                        continue
+                    layer = layerdef.layer()
+                    v = self.parameter.value(layer, self.pt, bands)
+                    setProgressValue(i + 1)
+                    if v is not None:
                         time = parser.parse(time)
-                        self.data[time] = []
-                        for col in range(xsteps):
-                            x = rectangle.xMinimum() + col * layer.rasterUnitsPerPixelX()
-                            for row in range(ysteps):
-                                y = rectangle.yMinimum() + row * layer.rasterUnitsPerPixelY()
-                                pixel = QgsPoint(col, row)
-                                value = self.parameter.value(roi, pixel, bands)
-                                if value:
-                                    self.data[time].append((value, (x, y)))
-                    closeProgressBar()
-                    if not self.data:
-                        return
-                    y = [[v[0] for v in lis] for lis in self.data.values()]
-                    ymin = min([min(v) for v in y])
-                    ymax = max([max(v) for v in y])
-
-                xmin = min(self.data.keys())
-                xmax = max(self.data.keys())
-                self.plotDataChanged.emit(xmin, xmax, ymin, ymax)
-                self.dataToPlot = copy.deepcopy(self.data)
+                        self.data[time] = [(v, (self.pt.x(), self.pt.y()))]
+                closeProgressBar()
+                if not self.data:
+                    return
+                y = [v[0][0] for v in self.data.values()]
+                ymin = min(y)
+                ymax = max(y)
             else:
-                self.dataToPlot = copy.deepcopy(self.data)
-                datesToRemove = []
-                for d in self.data.keys():
-                    if d < filter[0] or d > filter[1]:
-                        datesToRemove.append(d)
-                for d in datesToRemove:
-                    del self.dataToPlot[d]
+                self.data = {}
+                startProgressBar("Retrieving plot data", len(canvasLayers))
+                for (i, (layerdef, time)) in enumerate(canvasLayers):
+                    if self.filter and ((self.filter[0] is not None and time < self.filter[0])
+                                   or (self.filter[1] is not None and time > self.filter[1])):
+                        continue
+                    layer = layerdef.layer()
+                    if not self.rectangle.intersects(layer.extent()):
+                        continue
+                    rectangle = self.rectangle.intersect(layer.extent())
+                    xsteps = int(rectangle.width() / layer.rasterUnitsPerPixelX())
+                    ysteps = int(rectangle.height() / layer.rasterUnitsPerPixelY())
+                    filename = layerdef.layerFile(rectangle)
+                    roi = layers.getBandArrays(filename)
+                    setProgressValue(i + 1)
+                    time = parser.parse(time)
+                    self.data[time] = []
+                    for col in range(xsteps):
+                        x = rectangle.xMinimum() + col * layer.rasterUnitsPerPixelX()
+                        for row in range(ysteps):
+                            y = rectangle.yMinimum() + row * layer.rasterUnitsPerPixelY()
+                            pixel = QgsPoint(col, row)
+                            value = self.parameter.value(roi, pixel, bands)
+                            if value:
+                                self.data[time].append((value, (x, y)))
+                closeProgressBar()
+                if not self.data:
+                    return
+                y = [[v[0] for v in lis] for lis in self.data.values()]
+                ymin = min([min(v) for v in y])
+                ymax = max([max(v) for v in y])
+
+            xmin = min(self.data.keys())
+            xmax = max(self.data.keys())
+            self.plotDataChanged.emit(xmin, xmax, ymin, ymax)
+            self.dataToPlot = copy.deepcopy(self.data)
+
+            if self.filter:
                 for key, values in self.data.iteritems():
                     for v in values[::-1]:
-                        if v[0] < filter[2] or v[0] > filter[3]:
+                        if ((self.filter[2] is not None and  v[0] < self.filter[2])
+                            or self.filter[3]is not None and v[0] > self.filter[3]):
                             try:
                                 self.dataToPlot[key].remove(v)
                             except:
@@ -178,11 +171,11 @@ class PlotWidget(BASE, WIDGET):
             for d in datesToRemove:
                 del self.dataToPlot[d]
 
-
             axes = self.figure.add_subplot(1, 1, 1)
             x = matplotlib.dates.date2num(self.dataToPlot.keys())
             if self.rectangle is None:
                 y = [v[0][0] for v in self.dataToPlot.values() if v]
+                print y
                 axes.scatter(self.dataToPlot.keys(), y)
             else:
                 sortedKeys = sorted(self.dataToPlot.keys())
