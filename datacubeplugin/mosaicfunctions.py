@@ -1,8 +1,8 @@
 import numpy as np
 import math
-try:   
+try:
     import hdmedians as hd
-    geomMedianOk = True
+    geoMedianOk = True
 except:
     geoMedianOk = False
 
@@ -12,7 +12,7 @@ np.nanmedian=np.median
 NO_DATA = -99999
 
 class MosaicFunction():
-    
+
     bandByBand=True
 
     def computeQAMask(self, qas):
@@ -29,7 +29,7 @@ class MosaicFunction():
                 resultRow.append(res)
             resultRows.append(resultRow)
         return np.array(resultRows)
-    
+
     def compute(self, values, qa):
         if self.bandByBand:
             resultRows = []
@@ -71,7 +71,7 @@ class MosaicFunction():
                     else:
                         result = [NO_DATA] * len(values)
 
-                    for i,v in enumerate(result):                                                
+                    for i,v in enumerate(result):
                         resultRow[i].append(v)
                 for i in range(len(values)):
                     resultRows[i].append(resultRow[i])
