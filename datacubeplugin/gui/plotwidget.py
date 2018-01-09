@@ -18,12 +18,15 @@ from dateutil import parser
 import csv
 from datetime import datetime
 import copy
-
+import time as timelib
+import logging
+import traceback
 
 pluginPath = os.path.dirname(os.path.dirname(__file__))
 WIDGET, BASE = uic.loadUiType(
     os.path.join(pluginPath, 'ui', 'plotwidget.ui'))
 
+logger = logging.getLogger('datacube')
 
 class PlotWidget(BASE, WIDGET):
 
@@ -116,8 +119,11 @@ class PlotWidget(BASE, WIDGET):
                     if ((minDate is not None and time < minDate) or
                         (maxDate is not None and time > maxDate)):
                         continue
+                    start = timelib.time()
                     layer = layerdef.layer()
                     v = self.parameter.value(layer, self.pt, bands)
+                    end = timelib.time()
+                    logger.info("Plot data for layer %i retrieved in %s seconds" % (i, str(end-start)))
                     setProgressValue(i + 1)
                     if v is not None:
                         self.data[time] = [(v, (self.pt.x(), self.pt.y()))]
@@ -134,6 +140,7 @@ class PlotWidget(BASE, WIDGET):
                     if ((minDate is not None and time < minDate) or
                         (maxDate is not None and time > maxDate)):
                         continue
+                    start = timelib.time()
                     layer = layerdef.layer()
                     if not self.rectangle.intersects(layer.extent()):
                         continue
@@ -142,8 +149,10 @@ class PlotWidget(BASE, WIDGET):
                     ysteps = int(rectangle.height() / layer.rasterUnitsPerPixelY())
                     filename = layerdef.layerFile(rectangle)
                     roi = layers.getBandArrays(filename)
+                    end = timelib.time()
+                    logger.info("ROI data for layer %i retrieved in %s seconds" % (i, str(end-start)))
+                    start = timelib.time()
                     setProgressValue(i + 1)
-                    time = parser.parse(time)
                     self.data[time] = []
                     for col in range(xsteps):
                         x = rectangle.xMinimum() + col * layer.rasterUnitsPerPixelX()
@@ -153,6 +162,8 @@ class PlotWidget(BASE, WIDGET):
                             value = self.parameter.value(roi, pixel, bands)
                             if value:
                                 self.data[time].append((value, (x, y)))
+                    end = timelib.time()
+                    logger.info("Plot data computed from ROI data in %s seconds" % (str(end-start)))
                 closeProgressBar()
                 if not self.data:
                     return
@@ -196,6 +207,7 @@ class PlotWidget(BASE, WIDGET):
                 axes.set_xticklabels([str(d).split(" ")[0] for d in sortedKeys], rotation=70)
             self.figure.autofmt_xdate()
         except Exception, e:
+            traceback.print_exc()
             closeProgressBar()
             return
 

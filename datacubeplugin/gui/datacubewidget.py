@@ -192,8 +192,14 @@ class DataCubeWidget(BASE, WIDGET):
                 xmax = self.txtEndDate.date().toPyDate()
                 xmin = datetime.datetime(xmin.year, xmin.month, xmin.day)
                 xmax = datetime.datetime(xmax.year, xmax.month, xmax.day)
-                ymin = float(self.txtMinY.text()) or None
-                ymax = float(self.txtMaxY.text()) or None
+                try:
+                    ymin = float(self.txtMinY.text())
+                except:
+                    ymin = None
+                try:
+                    ymax = float(self.txtMaxY.text())
+                except:
+                    ymin = None
                 _filter = [xmin, xmax, ymin, ymax]
             plotWidget.plot(dataset=name, coverage=coverageName, parameter=param,
                             _filter=_filter, pt=self.pt, rectangle=self.rectangle)
