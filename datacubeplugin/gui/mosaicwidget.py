@@ -18,13 +18,13 @@ from qgiscommons2.gui import execute, startProgressBar, closeProgressBar, setPro
 import processing
 import time as timelib
 import logging
+import math
+
+logger = logging.getLogger('datacube')
 
 pluginPath = os.path.dirname(os.path.dirname(__file__))
 WIDGET, BASE = uic.loadUiType(
     os.path.join(pluginPath, 'ui', 'mosaicwidget.ui'))
-
-logfile = os.path.join(os.path.expanduser("~"), ".qgis2". "datacubelog.txt")
-logging.basicConfig(filename=logfile)
 
 class MosaicWidget(BASE, WIDGET):
 
@@ -142,14 +142,20 @@ class MosaicWidget(BASE, WIDGET):
             newBands = []
             tilesFolders = []
             dstFolder = tempFolderInTempFolder()
-            
+
             '''We download the layers so we can access them locally'''
-            logging.info("Downloading datacube layers to local files. Extent:%s. Tiles count: %s" % ("",""))
+            lay = validLayers[0]
+            xSize = extent.width() / lay.layer().rasterUnitsPerPixelX()
+            ySize = extent.height() / lay.layer().rasterUnitsPerPixelY()
+            xTiles = math.ceil(xSize / lay.TILESIZE)
+            yTiles = math.ceil(ySize / lay.TILESIZE)
+            logger.info("Downloading datacube layers to local files. Extent:%sx%s. Tiles count: %sx%s" %
+                         (extent.width(), extent.height(),xTiles, yTiles))
             for i, lay in enumerate(validLayers):
                 start = timelib.time()
                 tilesFolders.append(lay.saveTiles(extent))
                 end = timelib.time()
-                logging.info("Layer %s downloaded in %s seconds." % (str(i), str(end-start)))
+                logger.info("Layer %s downloaded in %s seconds." % (str(i), str(end-start)))
 
             try:
                 qaBand = bandNames.index("pixel_qa")
@@ -175,9 +181,9 @@ class MosaicWidget(BASE, WIDGET):
                     qaData = None
 
                 end = timelib.time()
-                logging.info("QA band prepared in %s seconds" % (str(end-start)))
+                logger.info("QA band prepared in %s seconds" % (str(end-start)))
 
-                    
+
                 if mosaicFunction.bandByBand:
                     '''
                     We operate band by band, since a given band in the the final result
@@ -192,7 +198,7 @@ class MosaicWidget(BASE, WIDGET):
                             newBands[bandName] = mosaicFunction.compute(bandData, qaData)
                             bandData = None
                     end = timelib.time()
-                    logging.info("Tile %s read and processed in %s seconds." % (str(i), str(end-start)))
+                    logger.info("Tile %s read and processed in %s seconds." % (str(i), str(end-start)))
                 else:
                     '''
                     We operate with all bands at once, and the output layer will
@@ -200,14 +206,23 @@ class MosaicWidget(BASE, WIDGET):
                     layers'''
                     bandData = []
                     bandNamesArray = []
+                    start = timelib.time()
                     for i, band in enumerate(bandNames):
-                        if i != qaBand:                            
+                        if i != qaBand:
                             bandData.append([getArray(f, i + 1) for f in files])
-                            bandNamesArray.append(band)                           
+                            bandNamesArray.append(band)
+                    end = timelib.time()
+                    logger.info("Tile %s data read and prepared in %s seconds." % (str(i), str(end-start)))
+                    start = timelib.time()
                     newBandsArray = mosaicFunction.compute(bandData, qaData)
+                    end = timelib.time()
+                    logger.info("Tile %s data processed in %s seconds." % (str(i), str(end-start)))
                     newBands = {k: v for k, v in zip(bandNamesArray, newBandsArray)}
                     if qaBand is not None:
-                        newBands[bandNames[qaBand]] = mosaicFunction.computeQAMask(qaData) 
+                        start = timelib.time()
+                        newBands[bandNames[qaBand]] = mosaicFunction.computeQAMask(qaData)
+                        end = timelib.time()
+                        logger.info("QA band prepared in %s seconds" % (str(end-start)))
                     bandData = None
 
                 start = timelib.time()
@@ -238,10 +253,10 @@ class MosaicWidget(BASE, WIDGET):
                 del dstDs
 
                 end = timelib.time()
-                logging.info("Tile %s written to local file in %s seconds." % (str(i), str(end-start)))
+                logger.info("Tile %s written to local file in %s seconds." % (str(i), str(end-start)))
 
                 tileend = timelib.time()
-                logging.info("Total time to process tile: %s seconds." % (str(tileend-tilestart)))
+                logger.info("Total time to process tile: %s seconds." % (str(tileend-tilestart)))
 
 
             '''With all the tiles, we create a virtual raster'''

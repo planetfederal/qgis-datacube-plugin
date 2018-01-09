@@ -13,6 +13,19 @@ from datacubeplugin.gui.datacubewidget import DataCubeWidget
 from datacubeplugin.gui.plotwidget import plotWidget
 from datacubeplugin.gui.mosaicwidget import mosaicWidget
 
+import logging
+
+logger = logging.getLogger('datacube')
+logfile = os.path.join(os.path.expanduser("~"), ".qgis2", "datacubelog.txt")
+hdlr = logging.FileHandler(logfile)
+formatter = logging.Formatter('%(asctime)s %(levelname)s %(message)s')
+hdlr.setFormatter(formatter)
+logger.addHandler(hdlr)
+logger.setLevel(logging.DEBUG)
+
+
+logging.basicConfig(filename=logfile)
+
 class DataCubePlugin:
     def __init__(self, iface):
         self.iface = iface
@@ -74,8 +87,8 @@ class DataCubePlugin:
         except:
             pass
 
-        self.iface.removePluginWebMenu("Data Cube Plugin", self.dataCubeAction)
-        self.iface.removePluginWebMenu("Data Cube Plugin", self.mosaicAction)
+        self.iface.removePluginMenu("Data Cube Plugin", self.dataCubeAction)
+        self.iface.removePluginMenu("Data Cube Plugin", self.mosaicAction)
         #removeSettingsMenu("Data Cube Plugin")
         removeAboutMenu("Data Cube Plugin")
         removeHelpMenu("Data Cube Plugin")
