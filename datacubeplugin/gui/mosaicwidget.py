@@ -16,10 +16,15 @@ from datacubeplugin.utils import addLayerIntoGroup, dateFromDays, daysFromDate
 from datacubeplugin.layers import getArray
 from qgiscommons2.gui import execute, startProgressBar, closeProgressBar, setProgressValue
 import processing
+import time as timelib
+import logging
 
 pluginPath = os.path.dirname(os.path.dirname(__file__))
 WIDGET, BASE = uic.loadUiType(
     os.path.join(pluginPath, 'ui', 'mosaicwidget.ui'))
+
+logfile = os.path.join(os.path.expanduser("~"), ".qgis2". "datacubelog.txt")
+logging.basicConfig(filename=logfile)
 
 class MosaicWidget(BASE, WIDGET):
 
@@ -137,9 +142,14 @@ class MosaicWidget(BASE, WIDGET):
             newBands = []
             tilesFolders = []
             dstFolder = tempFolderInTempFolder()
+            
             '''We download the layers so we can access them locally'''
+            logging.info("Downloading datacube layers to local files. Extent:%s. Tiles count: %s" % ("",""))
             for i, lay in enumerate(validLayers):
+                start = timelib.time()
                 tilesFolders.append(lay.saveTiles(extent))
+                end = timelib.time()
+                logging.info("Layer %s downloaded in %s seconds." % (str(i), str(end-start)))
 
             try:
                 qaBand = bandNames.index("pixel_qa")
@@ -153,19 +163,27 @@ class MosaicWidget(BASE, WIDGET):
             startProgressBar("Processing mosaic data", len(tileFiles))
             '''Now we process all tiles separately'''
             for i, filename in enumerate(tileFiles):
+                tilestart = timelib.time()
                 setProgressValue(i)
+
+                start = timelib.time()
                 newBands = {}
                 files = [os.path.join(folder, filename) for folder in tilesFolders]
                 if qaBand is not None:
                     qaData = [getArray(f, qaBand + 1) for f in files]
                 else:
                     qaData = None
+
+                end = timelib.time()
+                logging.info("QA band prepared in %s seconds" % (str(end-start)))
+
                     
                 if mosaicFunction.bandByBand:
                     '''
                     We operate band by band, since a given band in the the final result
                     layer depends only on the values of that band in the input layers,
                     not the value of other bands'''
+                    start = timelib.time()
                     for band, bandName in enumerate(bandNames):
                         if band == qaBand:
                             newBands[bandName] = mosaicFunction.computeQAMask(qaData)
@@ -173,10 +191,12 @@ class MosaicWidget(BASE, WIDGET):
                             bandData = [getArray(f, band + 1) for f in files]
                             newBands[bandName] = mosaicFunction.compute(bandData, qaData)
                             bandData = None
+                    end = timelib.time()
+                    logging.info("Tile %s read and processed in %s seconds." % (str(i), str(end-start)))
                 else:
                     '''
                     We operate with all bands at once, and the output layer will
-                    have only one band computed from the set of them in the input
+                    have only each band computed from the set of them in the input
                     layers'''
                     bandData = []
                     bandNamesArray = []
@@ -190,6 +210,7 @@ class MosaicWidget(BASE, WIDGET):
                         newBands[bandNames[qaBand]] = mosaicFunction.computeQAMask(qaData) 
                     bandData = None
 
+                start = timelib.time()
                 '''We write the set of bands as a new layer. That will be an output tile'''
                 templateFilename = os.path.join(tilesFolders[0], filename)
                 ds = gdal.Open(templateFilename, GA_ReadOnly)
@@ -200,13 +221,12 @@ class MosaicWidget(BASE, WIDGET):
                 geotransform = ds.GetGeoTransform()
                 projection = ds.GetProjection()
                 del ds
-
                 driver = gdal.GetDriverByName("GTiff")
                 dstFilename = os.path.join(dstFolder, filename)
                 dstDs= driver.Create(dstFilename, width, height, bandCount, datatype)
 
-                for i, band in enumerate(bandNames):
-                    gdalBand = dstDs.GetRasterBand(i+1)
+                for b, band in enumerate(bandNames):
+                    gdalBand = dstDs.GetRasterBand(b+1)
                     gdalBand.SetNoDataValue(NO_DATA)
                     gdalBand.WriteArray(newBands[band])
                     gdalBand.FlushCache()
@@ -216,6 +236,13 @@ class MosaicWidget(BASE, WIDGET):
                 dstDs.SetProjection(projection)
 
                 del dstDs
+
+                end = timelib.time()
+                logging.info("Tile %s written to local file in %s seconds." % (str(i), str(end-start)))
+
+                tileend = timelib.time()
+                logging.info("Total time to process tile: %s seconds." % (str(tileend-tilestart)))
+
 
             '''With all the tiles, we create a virtual raster'''
             toMerge = ";".join([os.path.join(dstFolder, f) for f in tileFiles])
