@@ -34,9 +34,9 @@ class Layer():
         pipe.set(provider.clone())
         filewriter.writeRaster(pipe, xSize, ySize, extent, provider.crs())
 
-    def saveTo(self, folder):
-        filename = os.path.join(folder, self.name.replace(":", "_"))
-        self._save(filename)
+    def saveTo(self, folder, extent=None):
+        filename = os.path.join(folder, self.name().replace(":", "_") + ".tif")
+        self._save(filename, extent)
 
     TILESIZE = 256
     def saveTiles(self, _extent):

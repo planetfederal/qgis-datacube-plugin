@@ -1,6 +1,7 @@
 import os
 
 import itertools
+import json
 
 from qgis.core import *
 from qgis.gui import QgsMessageBar
@@ -12,7 +13,7 @@ from qgis.PyQt.QtGui import QSizePolicy, QPixmap, QImage, QPainter, QIcon, QDoub
 from qgis.PyQt.QtCore import Qt, QSize
 from qgis.PyQt.QtSvg import QSvgRenderer
 from qgiscommons2.layers import layerFromSource, WrongLayerSourceException
-from qgiscommons2.gui import execute, askForFolder
+from qgiscommons2.gui import execute, askForFolder, startProgressBar, closeProgressBar, setProgressValue
 
 from endpointselectiondialog import EndpointSelectionDialog
 
@@ -21,6 +22,7 @@ from datacubeplugin import layers
 from datacubeplugin.connectors import connectors
 from datacubeplugin.gui.plotwidget import plotWidget
 from datacubeplugin.gui.mosaicwidget import mosaicWidget
+from datacubeplugin.gui.downloaddialog import DownloadDialog
 from datacubeplugin import plotparams
 from datacubeplugin.utils import addLayerIntoGroup, dateFromDays, daysFromDate, setLayerRGB
 import datetime
@@ -197,6 +199,54 @@ class DataCubeWidget(BASE, WIDGET):
                 _filter = [xmin, xmax, ymin, ymax]
             plotWidget.plot(dataset=name, coverage=coverageName, parameter=param,
                             _filter=_filter, pt=self.pt, rectangle=self.rectangle)
+            
+    def addEndpoint(self, endpoint):
+        iface.mainWindow().statusBar().showMessage("Retrieving coverages info from endpoint...")
+        connector = None
+        for c in connectors:
+            if c.isCompatible(endpoint):
+                connector = c(endpoint)
+                break
+        if connector is None:
+            iface.messageBar().pushMessage("", "Could not add coverages from the provided endpoint.",
+                                               level=QgsMessageBar.WARNING)
+            iface.mainWindow().statusBar().showMessage("")
+            return
+        layers._layers[connector.name()] = {}
+        layers._coverages[connector.name()] = {}
+        coverages = connector.coverages()
+        if coverages:
+            endpointItem = QTreeWidgetItem()
+            endpointItem.setText(0, connector.name())
+        emptyCoverages = 0
+        for coverageName in coverages:
+            coverage = connector.coverage(coverageName)
+            timepositions = coverage.timePositions()
+            if timepositions:
+                item = CoverageItem(endpointItem, self.treeWidget, coverage, self)
+                timeLayers = []
+                for time in timepositions:
+                    layer = coverage.layerForTimePosition(time)
+                    timeLayers.append(layer)
+                    subitem = LayerTreeItem(layer, self)
+                    item.addChild(subitem)
+                layers._layers[connector.name()][coverageName] = timeLayers
+                layers._coverages[connector.name()][coverageName] = coverage
+                self.comboCoverageToPlot.addItem(connector.name() + " : " + coverageName)
+                self.comboCoverageForRGB.addItem(connector.name() + " : " + coverageName)
+                mosaicWidget.comboCoverage.addItem(connector.name() + " : " + coverageName)
+            else:
+                emptyCoverages += 1
+        iface.mainWindow().statusBar().showMessage("")
+        if emptyCoverages == len(coverages):
+            iface.messageBar().pushMessage("", "No coverages with timepositions were found in server.", level=QgsMessageBar.WARNING)
+        else:
+            self.treeWidget.addTopLevelItem(endpointItem)
+            if emptyCoverages:
+                iface.messageBar().pushMessage("",
+                        "%i out of %i coverages do not declare any time position and could not be added." % (emptyCoverages, len(coverages)),
+                        level=QgsMessageBar.WARNING)
+
 
 class TreeItemWithLink(QTreeWidgetItem):
 
@@ -244,68 +294,45 @@ class AddEndpointTreeItem(TreeItemWithLink):
             self.addEndpoint(dialog.url)
 
     def addEndpoint(self, endpoint):
-        execute(lambda: self._addEndpoint(endpoint))
+        execute(lambda: self.widget.addEndpoint(endpoint))
 
-    def _addEndpoint(self, endpoint):
-        iface.mainWindow().statusBar().showMessage("Retrieving coverages info from endpoint...")
-        connector = None
-        for c in connectors:
-            if c.isCompatible(endpoint):
-                connector = c(endpoint)
-                break
-        if connector is None:
-            iface.messageBar().pushMessage("", "Could not add coverages from the provided endpoint.",
-                                               level=QgsMessageBar.WARNING)
-            iface.mainWindow().statusBar().showMessage("")
-            return
-        layers._layers[connector.name()] = {}
-        layers._coverages[connector.name()] = {}
-        coverages = connector.coverages()
-        if coverages:
-            endpointItem = QTreeWidgetItem()
-            endpointItem.setText(0, connector.name())
-        emptyCoverages = 0
-        for coverageName in coverages:
-            coverage = connector.coverage(coverageName)
-            timepositions = coverage.timePositions()
-            if timepositions:
-                item = CoverageItem(endpointItem, self.tree, coverage)
-                timeLayers = []
-                for time in timepositions:
-                    layer = coverage.layerForTimePosition(time)
-                    timeLayers.append(layer)
-                    subitem = LayerTreeItem(layer, self.widget)
-                    item.addChild(subitem)
-                layers._layers[connector.name()][coverageName] = timeLayers
-                layers._coverages[connector.name()][coverageName] = coverage
-                self.widget.comboCoverageToPlot.addItem(connector.name() + " : " + coverageName)
-                self.widget.comboCoverageForRGB.addItem(connector.name() + " : " + coverageName)
-                mosaicWidget.comboCoverage.addItem(connector.name() + " : " + coverageName)
-            else:
-                emptyCoverages += 1
-        iface.mainWindow().statusBar().showMessage("")
-        if emptyCoverages == len(coverages):
-            iface.messageBar().pushMessage("", "No coverages with timepositions were found in server.", level=QgsMessageBar.WARNING)
-        else:
-            self.tree.addTopLevelItem(endpointItem)
-            if emptyCoverages:
-                iface.messageBar().pushMessage("",
-                        "%i out of %i coverages do not declare any time position and could not be added." % (emptyCoverages, len(coverages)),
-                        level=QgsMessageBar.WARNING)
 
 class CoverageItem(TreeItemWithLink):
 
-    def __init__(self, parent, tree, coverage):
+    def __init__(self, parent, tree, coverage, widget):
         TreeItemWithLink.__init__(self, parent, tree, coverage.name(), "Download")
         self.coverage = coverage
+        self.widget = widget
 
     def linkClicked(self):
-        folder = askForFolder(self.tree, "Folder for local storage")
-        if folder:
-            timepositions = self.coverage.timePositions()
-            for time in timepositions:
+        timepositions = self.coverage.timePositions()
+        dlg = DownloadDialog(timepositions, self.tree)
+        dlg.show()
+        dlg.exec_()
+        if dlg.timepositions:
+            folder = os.path.join(dlg.folder, self.coverage.name())
+            if not os.path.exists(folder):
+                try:
+                    os.makedirs(folder)
+                except:
+                    iface.messageBar().pushMessage("",
+                        "Wrong output directory or error creating it",
+                        level=QgsMessageBar.WARNING)
+                    return
+                    
+            bandsFile = os.path.join(folder, "bands.json")
+            with open(bandsFile, "w") as f:
+                json.dump(self.coverage.bands, f) 
+            startProgressBar("Downloading datacube subset", len(timepositions))
+            for i, time in enumerate(timepositions):
+                setProgressValue(i)
                 layer = self.coverage.layerForTimePosition(time)
-                layer.saveTo(folder)
+                execute(lambda: layer.saveTo(folder, dlg.roi))
+            closeProgressBar()
+            if dlg.openInDatacubePanel:
+                execute(lambda: self.widget.addEndpoint(dlg.folder))
+                
+
 
 class LayerTreeItem(QTreeWidgetItem):
 
