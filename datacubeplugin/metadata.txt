@@ -4,7 +4,7 @@ description=Data Cube Plugin
 about=<p></p>
 category=Plugins
 qgisMinimumVersion=2.0
-version=0.1
+version=1.0
 
 author=Boundless
 email=info@boundlessgeo.com
