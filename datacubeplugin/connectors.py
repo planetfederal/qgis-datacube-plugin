@@ -108,7 +108,7 @@ class WCSCoverage():
         self.service = service
         self.url = url
         self.coverageName = coverageName
-        self._timepositions = [s.replace("Z", "") for s in coverage.timepositions]
+        self._timepositions = {s.replace("Z", ""): s for s in coverage.timepositions}
         self.bands = coverage.axisDescriptions[0].values
         self.crs = coverage.supportedCRS[0]
 
@@ -116,21 +116,23 @@ class WCSCoverage():
         return self.coverageName
 
     def timePositions(self):
-        return self._timepositions
+        return self._timepositions.keys()
 
     def layerForTimePosition(self, time):
-        return WCSLayer(self, time)
+        return WCSLayer(self, self._timepositions[time])
 
 class WCSLayer(Layer):
 
     def __init__(self, coverage, time):
         Layer.__init__(self)
         self.coverage = coverage
-        self._time = time
+        self._time = time.replace("Z", "")
+        self._timeUnmodified = time
         self._layer = None
 
     def source(self):
-        uri = uriFromComponents(self.coverage.url, self.coverage.name(), self.time())
+        uri = uriFromComponents(self.coverage.url, self.coverage.name(), self._timeUnmodified)
+
         return str(uri.encodedUri())
 
     def name(self):
