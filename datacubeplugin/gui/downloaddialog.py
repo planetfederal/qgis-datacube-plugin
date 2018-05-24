@@ -112,8 +112,10 @@ class DownloadDialog(BASE, WIDGET):
             self.roi = None
         self.openInDatacubePanel = self.checkOpenDownloaded.isChecked()
         self.folder = self.textFolder.text()
+        iface.mapCanvas().mapToolSet.disconnect(self.unsetTool)
         self.close()
         
     def cancelPressed(self):
         self.timepositions = []
+        iface.mapCanvas().mapToolSet.disconnect(self.unsetTool)
         self.close()
